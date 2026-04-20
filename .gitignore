@@ -1,0 +1,43 @@
+# Rust
+target/
+Cargo.lock.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Env + secrets
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+/coverage/
+/htmlcov/
+
+# Tool-specific
+.claude/
+.conductor/

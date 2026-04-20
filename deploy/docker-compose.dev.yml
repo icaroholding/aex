@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: spize-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spize
+      POSTGRES_PASSWORD: spize_dev
+      POSTGRES_DB: spize
+    ports:
+      - "5432:5432"
+    volumes:
+      - spize_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spize -d spize"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  spize_postgres_data:
+    name: spize_postgres_dev_data

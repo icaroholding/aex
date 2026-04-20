@@ -1,0 +1,22 @@
+[package]
+name = "aex-identity"
+description = "Identity providers for Agent Exchange Protocol (AEX): SpizeNative (Ed25519), EtereCitizen (did:ethr), did:web."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+aex-core = { path = "../aex-core" }
+
+async-trait.workspace = true
+ed25519-dalek.workspace = true
+hex.workspace = true
+rand.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+k256 = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true }

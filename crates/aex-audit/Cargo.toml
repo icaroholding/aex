@@ -1,0 +1,25 @@
+[package]
+name = "aex-audit"
+description = "Tamper-evident audit log for Agent Exchange Protocol (AEX): hash-chained JSONL + pluggable Merkle/Rekor anchoring."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+aex-core = { path = "../aex-core" }
+
+async-trait.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true }
+tracing.workspace = true
+
+sha2.workspace = true
+hex.workspace = true
+time = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

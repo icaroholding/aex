@@ -1,0 +1,59 @@
+[package]
+name = "aex-control-plane"
+description = "Agent Exchange Protocol (AEX) control plane: identity registry, routing, policy, audit orchestration."
+version.workspace = true
+edition.workspace = true
+license = "BUSL-1.1"
+license-file = "LICENSE.bsl"
+repository.workspace = true
+homepage = "https://spize.ai"
+authors = ["Icaro Holding <oss@spize.ai>"]
+keywords = ["aex", "agent", "protocol", "control-plane"]
+categories = ["network-programming"]
+
+[[bin]]
+name = "aex-control-plane"
+path = "src/main.rs"
+
+[dependencies]
+aex-core = { path = "../aex-core" }
+aex-audit = { path = "../aex-audit" }
+aex-scanner = { path = "../aex-scanner" }
+aex-policy = { path = "../aex-policy" }
+
+rand.workspace = true
+
+# Async runtime
+tokio = { workspace = true }
+async-trait.workspace = true
+
+# HTTP
+axum.workspace = true
+tower.workspace = true
+tower-http = { workspace = true, features = ["trace", "limit", "timeout", "cors"] }
+
+# DB
+sqlx = { workspace = true }
+
+# Serde
+serde = { workspace = true }
+serde_json.workspace = true
+
+# Errors & logging
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+# Crypto (for signature verification)
+ed25519-dalek.workspace = true
+hex.workspace = true
+sha2.workspace = true
+
+# Time
+time = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+rand.workspace = true
+tower = { workspace = true, features = ["util"] }
+tempfile = "3"
