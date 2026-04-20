@@ -1,0 +1,10 @@
+# Default owner — requires review on every PR.
+*                                @icaroholding
+
+# Extra-sensitive paths.
+/.github/workflows/              @icaroholding
+/crates/aex-core/                @icaroholding
+/crates/aex-identity/            @icaroholding
+/crates/aex-control-plane/       @icaroholding
+/crates/aex-control-plane/LICENSE.bsl  @icaroholding
+/LICENSE                         @icaroholding
