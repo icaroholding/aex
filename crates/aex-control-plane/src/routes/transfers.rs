@@ -887,8 +887,14 @@ pub async fn issue_ticket(
 /// complications that affect a binary trying to GET its own URL.
 async fn verify_tunnel_http_healthz(tunnel_url: &str) -> Result<(), ApiError> {
     let healthz = format!("{}/healthz", tunnel_url.trim_end_matches('/'));
+    // `.hickory_dns(true)` is what actually activates the pure-Rust
+    // resolver at runtime — the Cargo feature only compiles it in.
+    // Without this, reqwest falls back to the tokio/system resolver and
+    // inherits macOS's NXDOMAIN cache.
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
+        .hickory_dns(true)
+        .user_agent("aex-control-plane/1.2.0-alpha.3")
         .build()
         .map_err(|e| {
             ApiError::Internal(Box::new(crate::error::SimpleError(format!(
@@ -896,8 +902,12 @@ async fn verify_tunnel_http_healthz(tunnel_url: &str) -> Result<(), ApiError> {
             ))))
         })?;
 
+    // Widen retry budget: a Cloudflare quick-tunnel may answer DNS+TCP
+    // a few seconds before its HTTP layer is fully wired, especially
+    // when we're hitting it mere seconds after `AEX_READY=1`.
+    let max_attempts: u32 = 6;
     let mut last_err = String::new();
-    for attempt in 1..=3 {
+    for attempt in 1..=max_attempts {
         match client.get(&healthz).send().await {
             Ok(r) if r.status().is_success() => {
                 tracing::debug!(attempt, %healthz, "tunnel healthz OK");
@@ -907,17 +917,31 @@ async fn verify_tunnel_http_healthz(tunnel_url: &str) -> Result<(), ApiError> {
                 last_err = format!("status {}", r.status());
             }
             Err(e) => {
-                last_err = e.to_string();
+                // reqwest's Display on an Error hides the source; walk
+                // the chain so the user gets a real diagnostic when
+                // the check fails.
+                last_err = format_error_chain(&e);
             }
         }
         tracing::debug!(attempt, err = %last_err, "tunnel healthz not ready");
-        if attempt < 3 {
+        if attempt < max_attempts {
             tokio::time::sleep(std::time::Duration::from_secs(3)).await;
         }
     }
 
     Err(ApiError::BadRequest(format!(
-        "tunnel_url {tunnel_url} did not respond 200 on /healthz after 3 attempts (last: {last_err}). \
+        "tunnel_url {tunnel_url} did not respond 200 on /healthz after {max_attempts} attempts (last: {last_err}). \
          Ensure the data plane is running and AEX_READY=1 has been emitted before calling send_via_tunnel."
     )))
+}
+
+fn format_error_chain(err: &(dyn std::error::Error + 'static)) -> String {
+    let mut out = err.to_string();
+    let mut current = err.source();
+    while let Some(src) = current {
+        out.push_str(" -> ");
+        out.push_str(&src.to_string());
+        current = src.source();
+    }
+    out
 }
