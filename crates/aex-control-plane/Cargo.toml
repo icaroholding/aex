@@ -54,7 +54,14 @@ uuid = { workspace = true }
 
 # HTTP client — used to validate the reachability of a sender's
 # tunnel_url in the M2 `send_via_tunnel` flow before issuing tickets.
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+# `hickory-dns` swaps the tokio system resolver (which hits macOS's
+# mDNSResponder NXDOMAIN cache) for a pure-Rust one that queries 1.1.1.1
+# directly, so a validation that arrives shortly after the tunnel comes
+# up is not sabotaged by a stale negative cache entry.
+reqwest = { version = "0.12", default-features = false, features = [
+    "rustls-tls",
+    "hickory-dns",
+] }
 
 [dev-dependencies]
 rand.workspace = true

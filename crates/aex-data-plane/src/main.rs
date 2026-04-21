@@ -215,17 +215,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// accepts a connection on at least one resolved address. Deliberately
 /// avoids HTTP/TLS so this is not coupled to any one client library's
 /// quirks — the HTTP-level healthcheck lives in the control plane.
+///
+/// Uses a hickory resolver talking directly to 1.1.1.1, bypassing the
+/// OS resolver (which on macOS caches NXDOMAIN for ~60s and would
+/// sabotage retries during the tunnel's DNS-propagation window).
 async fn verify_tunnel_reachable(
     public_url: &str,
     timeout_secs: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    use hickory_resolver::config::{ResolverConfig, ResolverOpts};
+    use hickory_resolver::TokioAsyncResolver;
+
     let parsed = url::Url::parse(public_url)?;
     let host = parsed
         .host_str()
         .ok_or_else(|| format!("public URL {public_url} has no host component"))?
         .to_string();
     let port = parsed.port().unwrap_or(443);
-    let target = format!("{host}:{port}");
+
+    let mut resolver_opts = ResolverOpts::default();
+    // Defeat any built-in positive cache so a fresh lookup happens each
+    // time. We're not worried about traffic — this runs a handful of
+    // times in a startup window.
+    resolver_opts.cache_size = 0;
+    let resolver = TokioAsyncResolver::tokio(ResolverConfig::cloudflare(), resolver_opts);
 
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
     let mut attempt: u32 = 0;
@@ -234,9 +247,13 @@ async fn verify_tunnel_reachable(
     while tokio::time::Instant::now() < deadline {
         attempt += 1;
 
-        // Step 1: resolve DNS. lookup_host returns all A/AAAA records.
-        let addrs = match tokio::net::lookup_host(&target).await {
-            Ok(iter) => iter.collect::<Vec<_>>(),
+        // Step 1: resolve DNS via 1.1.1.1 directly. Bypasses the OS
+        // negative cache entirely.
+        let addrs: Vec<std::net::SocketAddr> = match resolver.lookup_ip(host.as_str()).await {
+            Ok(r) => r
+                .iter()
+                .map(|ip| std::net::SocketAddr::new(ip, port))
+                .collect(),
             Err(e) => {
                 last_err = format!("dns: {e}");
                 tracing::debug!(attempt, err = %last_err, "tunnel readiness: DNS not resolving");
@@ -260,7 +277,7 @@ async fn verify_tunnel_reachable(
         .await
         {
             Ok(Ok(_stream)) => {
-                tracing::info!(attempt, %target, %addr, "tunnel reachable (DNS + TCP)");
+                tracing::info!(attempt, %host, %addr, "tunnel reachable (DNS + TCP)");
                 return Ok(());
             }
             Ok(Err(e)) => {
