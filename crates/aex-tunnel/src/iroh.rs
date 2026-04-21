@@ -122,10 +122,16 @@ impl TunnelProvider for IrohTunnel {
         if let Some(sk) = self.secret_key.clone() {
             builder = builder.secret_key(sk);
         }
-        let endpoint = builder
-            .bind()
-            .await
-            .map_err(|e| TunnelError::Other(format!("iroh bind failed: {e}")))?;
+        let endpoint = match builder.bind().await {
+            Ok(ep) => ep,
+            Err(e) => {
+                let reason = format!("iroh bind failed: {e}");
+                self.status = TunnelStatus::Disconnected {
+                    reason: reason.clone(),
+                };
+                return Err(TunnelError::Other(reason));
+            }
+        };
 
         // Wait until the endpoint has contacted its home relay. Without
         // this the returned URL has no relay component and remote peers
