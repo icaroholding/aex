@@ -197,9 +197,9 @@ pub fn transfer_receipt_bytes(
     validate_ascii_line(action, "action")?;
     validate_nonce(nonce)?;
 
-    if !matches!(action, "download" | "ack" | "inbox") {
+    if !matches!(action, "download" | "ack" | "inbox" | "request_ticket") {
         return Err(Error::Internal(format!(
-            "action must be 'download', 'ack' or 'inbox', got {}",
+            "action must be 'download', 'ack', 'inbox' or 'request_ticket', got {}",
             action
         )));
     }

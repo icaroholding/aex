@@ -180,11 +180,7 @@ async fn create_transfer(
         if sig_bytes.len() != SIGNATURE_LEN {
             return Err(ApiError::BadRequest("signature must be 64 bytes".into()));
         }
-        let sender_pubkey_bytes = hex::decode(&sender_row.public_key)
-            .map_err(|e| ApiError::Internal(Box::new(crate::error::SimpleError(format!(
-                "pubkey hex: {}", e
-            )))))?;
-        let sender_pubkey_arr: [u8; 32] = sender_pubkey_bytes.as_slice().try_into().map_err(|_| {
+        let sender_pubkey_arr: [u8; 32] = sender_row.public_key.as_slice().try_into().map_err(|_| {
             ApiError::Internal(Box::new(crate::error::SimpleError("pubkey length".to_string())))
         })?;
         let sender_pubkey = ed25519_dalek::VerifyingKey::from_bytes(&sender_pubkey_arr)
@@ -718,7 +714,7 @@ pub struct TicketRequest {
     pub recipient_agent_id: String,
     pub nonce: String,
     pub issued_at: i64,
-    pub receipt_signature_hex: String,
+    pub signature_hex: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -785,7 +781,7 @@ pub async fn issue_ticket(
     )
     .map_err(|e| ApiError::BadRequest(format!("canonicalisation: {}", e)))?;
 
-    let sig_bytes = hex::decode(&req.receipt_signature_hex)
+    let sig_bytes = hex::decode(&req.signature_hex)
         .map_err(|e| ApiError::BadRequest(format!("receipt_signature_hex: {}", e)))?;
     if sig_bytes.len() != SIGNATURE_LEN {
         return Err(ApiError::BadRequest("signature must be 64 bytes".into()));
@@ -795,12 +791,7 @@ pub async fn issue_ticket(
         .await?
         .ok_or_else(|| ApiError::Unauthorized("recipient not registered".into()))?;
 
-    let pubkey_bytes = hex::decode(&rec_row.public_key).map_err(|e| {
-        ApiError::Internal(Box::new(crate::error::SimpleError(format!(
-            "pubkey hex: {}", e
-        ))))
-    })?;
-    let pubkey_arr: [u8; 32] = pubkey_bytes.as_slice().try_into().map_err(|_| {
+    let pubkey_arr: [u8; 32] = rec_row.public_key.as_slice().try_into().map_err(|_| {
         ApiError::Internal(Box::new(crate::error::SimpleError("pubkey length".to_string())))
     })?;
     let pubkey = ed25519_dalek::VerifyingKey::from_bytes(&pubkey_arr).map_err(|e| {

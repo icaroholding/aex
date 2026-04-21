@@ -92,9 +92,9 @@ def transfer_receipt_bytes(
     _validate_ascii_line(transfer_id, "transfer_id")
     _validate_ascii_line(action, "action")
     _validate_nonce(nonce)
-    if action not in ("download", "ack", "inbox"):
+    if action not in ("download", "ack", "inbox", "request_ticket"):
         raise ValueError(
-            f"action must be 'download', 'ack' or 'inbox', got {action}"
+            f"action must be 'download', 'ack', 'inbox' or 'request_ticket', got {action}"
         )
     return (
         f"spize-transfer-receipt:{PROTOCOL_VERSION}\n"

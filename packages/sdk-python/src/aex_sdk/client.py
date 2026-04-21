@@ -197,7 +197,7 @@ class SpizeClient:
             declared_mime=declared_mime,
             filename=filename,
             nonce=nonce,
-            issued_at=issued_at,
+            issued_at_unix=issued_at,
         )
         sig = self.identity.sign(intent)
         payload = {
@@ -212,7 +212,7 @@ class SpizeClient:
             "tunnel_url": tunnel_url,
             "declared_size": declared_size,
         }
-        r = self._client.post(f"{self.base_url}/v1/transfers/", json=payload)
+        r = self._http.post("/v1/transfers", json=payload)
         self._raise_for_status(r)
         return TransferResponse.from_json(r.json())
 
@@ -243,8 +243,8 @@ class SpizeClient:
         Requires the transfer to be in ``ready_for_pickup`` with a tunnel_url.
         """
         receipt = self._build_receipt(transfer_id, "request_ticket")
-        r = self._client.post(
-            f"{self.base_url}/v1/transfers/{transfer_id}/ticket",
+        r = self._http.post(
+            f"/v1/transfers/{transfer_id}/ticket",
             json=receipt,
         )
         self._raise_for_status(r)
@@ -260,9 +260,10 @@ class SpizeClient:
 
     def fetch_from_tunnel(self, ticket: "DataPlaneTicket") -> bytes:
         """M2: fetch blob bytes from the sender's data plane using a ticket."""
-        r = self._client.get(
+        r = httpx.get(
             f"{ticket.data_plane_url}/blob/{ticket.transfer_id}",
             headers={"X-AEX-Ticket": ticket.as_header()},
+            timeout=30.0,
         )
         self._raise_for_status(r)
         return r.content
