@@ -18,8 +18,10 @@ Sprint 1 scope: close M2 end-to-end, wire release automation, correct domain ref
 ### Added
 - `aex-tunnel::CloudflaredTunnel` — real orchestration of the `cloudflared` binary (fork + URL extraction + lifecycle)
 - Integration test covering tunnel lifecycle (start → reachable → Drop → cleanup)
-- MCP server M2 tools: `aex_request_ticket`, `aex_fetch_from_tunnel`
-- TypeScript SDK M2 helpers: `sendViaTunnel`, `requestTicket`, `fetchFromTunnel`, `DataPlaneTicket` type
+- MCP server M2 tools: `spize_send_via_tunnel`, `spize_request_ticket`, `spize_fetch_from_tunnel`
+- TypeScript SDK M2 helpers: `sendViaTunnel`, `requestTicket`, `fetchFromTunnel`, `ticketAsHeader`, `DataPlaneTicket` type (matches the Python SDK shape)
+- `transferReceiptBytes` in TS wire layer now accepts the `request_ticket` action (was already present in Rust + Python)
+- npm workspaces root so `@aexproto/mcp-server` picks up `@aexproto/sdk` locally during development
 - `examples/demo_two_agents_cloudflare.py` — first end-to-end demo with real Cloudflare tunnel
 
 ### Changed

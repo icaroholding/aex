@@ -1,0 +1,13 @@
+{
+  "name": "aex-workspace",
+  "private": true,
+  "description": "npm workspace root so @aexproto/mcp-server picks up @aexproto/sdk locally during development instead of fetching from the registry.",
+  "workspaces": [
+    "packages/sdk-typescript",
+    "packages/mcp-server"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  }
+}

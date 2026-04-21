@@ -89,10 +89,19 @@ export function transferIntentBytes(args: {
   );
 }
 
+export type ReceiptAction = "download" | "ack" | "inbox" | "request_ticket";
+
+const RECEIPT_ACTIONS: readonly ReceiptAction[] = [
+  "download",
+  "ack",
+  "inbox",
+  "request_ticket",
+];
+
 export function transferReceiptBytes(args: {
   recipientAgentId: string;
   transferId: string;
-  action: "download" | "ack" | "inbox";
+  action: ReceiptAction;
   nonce: string;
   issuedAtUnix: number;
 }): Uint8Array {
@@ -100,13 +109,9 @@ export function transferReceiptBytes(args: {
   validateAsciiLine(args.transferId, "transfer_id");
   validateAsciiLine(args.action, "action");
   validateNonce(args.nonce);
-  if (
-    args.action !== "download" &&
-    args.action !== "ack" &&
-    args.action !== "inbox"
-  ) {
+  if (!RECEIPT_ACTIONS.includes(args.action)) {
     throw new Error(
-      `action must be 'download', 'ack' or 'inbox', got ${args.action}`,
+      `action must be one of ${RECEIPT_ACTIONS.join(", ")}, got ${args.action}`,
     );
   }
   return ENCODER.encode(

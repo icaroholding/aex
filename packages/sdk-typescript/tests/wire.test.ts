@@ -105,4 +105,35 @@ describe("wire", () => {
       }),
     ).toThrow();
   });
+
+  it("transfer_receipt_bytes accepts request_ticket action (M2)", () => {
+    const bytes = transferReceiptBytes({
+      recipientAgentId: "spize:acme/bob:ddeeff",
+      transferId: "tx_m2_001",
+      action: "request_ticket",
+      nonce: "0123456789abcdef0123456789abcdef",
+      issuedAtUnix: 1_700_000_000,
+    });
+    expect(DEC.decode(bytes)).toBe(
+      "spize-transfer-receipt:v1\n" +
+        "recipient=spize:acme/bob:ddeeff\n" +
+        "transfer=tx_m2_001\n" +
+        "action=request_ticket\n" +
+        "nonce=0123456789abcdef0123456789abcdef\n" +
+        "ts=1700000000",
+    );
+  });
+
+  it("transfer_receipt_bytes rejects unknown actions", () => {
+    expect(() =>
+      transferReceiptBytes({
+        recipientAgentId: "spize:acme/bob:ddeeff",
+        transferId: "tx_abc",
+        // @ts-expect-error -- intentionally invalid to verify runtime guard
+        action: "hack",
+        nonce: "0123456789abcdef0123456789abcdef",
+        issuedAtUnix: 100,
+      }),
+    ).toThrow(/action must be one of/);
+  });
 });

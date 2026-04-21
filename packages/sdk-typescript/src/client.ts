@@ -2,6 +2,7 @@ import { hex, Identity, randomNonce } from "./identity.js";
 import { SpizeError, SpizeHttpError } from "./errors.js";
 import {
   registrationChallengeBytes,
+  ReceiptAction,
   transferIntentBytes,
   transferReceiptBytes,
 } from "./wire.js";
@@ -66,6 +67,37 @@ export interface InboxResponse {
   agent_id: string;
   count: number;
   entries: InboxEntry[];
+}
+
+/**
+ * Signed capability (M2) — recipient presents this to the sender's data
+ * plane to fetch blob bytes. The signature is from the control plane's
+ * signing key; the data plane verifies it with that public key + the
+ * declared `data_plane_url` as the audience.
+ */
+export interface DataPlaneTicket {
+  transfer_id: string;
+  recipient: string;
+  data_plane_url: string;
+  expires: number;
+  nonce: string;
+  signature: string; // hex-encoded Ed25519
+}
+
+/**
+ * Canonical JSON encoding suitable for the `X-AEX-Ticket` header value.
+ * Keys are emitted without whitespace so the header is identical across
+ * SDKs.
+ */
+export function ticketAsHeader(ticket: DataPlaneTicket): string {
+  return JSON.stringify({
+    transfer_id: ticket.transfer_id,
+    recipient: ticket.recipient,
+    data_plane_url: ticket.data_plane_url,
+    expires: ticket.expires,
+    nonce: ticket.nonce,
+    signature: ticket.signature,
+  });
 }
 
 function fromTransferJson(body: {
@@ -206,9 +238,113 @@ export class SpizeClient {
     return this.postJson("/v1/inbox", await this.buildReceipt("inbox", "inbox"));
   }
 
+  // ---------- M2 (peer-to-peer data plane) ----------
+
+  /**
+   * Announce a transfer WITHOUT uploading the payload. The sender must
+   * be running an `aex-data-plane` reachable at `tunnelUrl`; the control
+   * plane stores the URL and signs tickets against it.
+   */
+  async sendViaTunnel(args: {
+    recipient: string;
+    declaredSize: number;
+    declaredMime: string;
+    filename: string;
+    tunnelUrl: string;
+  }): Promise<TransferResponse> {
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const nonce = randomNonce();
+    const canonical = transferIntentBytes({
+      senderAgentId: this.identity.agentId,
+      recipient: args.recipient,
+      sizeBytes: args.declaredSize,
+      declaredMime: args.declaredMime,
+      filename: args.filename,
+      nonce,
+      issuedAtUnix: issuedAt,
+    });
+    const sig = await this.identity.sign(canonical);
+    const body = await this.postJson<any>("/v1/transfers", {
+      sender_agent_id: this.identity.agentId,
+      recipient: args.recipient,
+      declared_mime: args.declaredMime,
+      filename: args.filename,
+      nonce,
+      issued_at: issuedAt,
+      intent_signature_hex: hex.encode(sig),
+      blob_hex: "",
+      tunnel_url: args.tunnelUrl,
+      declared_size: args.declaredSize,
+    });
+    return fromTransferJson(body);
+  }
+
+  /**
+   * Request a signed data-plane ticket for a transfer in
+   * `ready_for_pickup` state. The returned ticket is used with
+   * {@link fetchFromTunnel} to pull the bytes directly from the sender.
+   */
+  async requestTicket(transferId: string): Promise<DataPlaneTicket> {
+    const body = await this.postJson<DataPlaneTicket>(
+      `/v1/transfers/${transferId}/ticket`,
+      await this.buildReceipt(transferId, "request_ticket"),
+    );
+    return {
+      transfer_id: body.transfer_id,
+      recipient: body.recipient,
+      data_plane_url: body.data_plane_url,
+      expires: Number(body.expires),
+      nonce: body.nonce,
+      signature: body.signature,
+    };
+  }
+
+  /**
+   * Fetch blob bytes from the sender's data plane using a previously
+   * requested ticket. This request does NOT go through the control
+   * plane — the bytes flow directly from the sender's tunnel.
+   */
+  async fetchFromTunnel(ticket: DataPlaneTicket): Promise<Uint8Array> {
+    const url = `${ticket.data_plane_url.replace(/\/+$/, "")}/blob/${ticket.transfer_id}`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
+    try {
+      const resp = await this._fetch(url, {
+        method: "GET",
+        headers: { "x-aex-ticket": ticketAsHeader(ticket) },
+        signal: ctrl.signal,
+      });
+      if (!resp.ok) {
+        let body: { code?: string; message?: string } = {};
+        try {
+          body = (await resp.json()) as typeof body;
+        } catch {
+          /* empty */
+        }
+        throw new SpizeHttpError(
+          resp.status,
+          body.code ?? null,
+          body.message ?? resp.statusText,
+        );
+      }
+      const buf = await resp.arrayBuffer();
+      return new Uint8Array(buf);
+    } catch (err) {
+      if (err instanceof SpizeError) throw err;
+      if (err instanceof Error && err.name === "AbortError") {
+        throw new SpizeError(
+          `fetch_from_tunnel timed out after ${this.timeoutMs}ms`,
+        );
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   private async buildReceipt(
     transferId: string,
-    action: "download" | "ack" | "inbox",
+    action: ReceiptAction,
   ): Promise<Record<string, unknown>> {
     const issuedAt = Math.floor(Date.now() / 1000);
     const nonce = randomNonce();
