@@ -105,7 +105,7 @@ pub async fn find_by_transfer_id(
                state, size_bytes, declared_mime, filename, blob_sha256, blob_path,
                scanner_verdict, policy_decision,
                created_at, scanned_at, accepted_at, delivered_at, rejected_at,
-               rejection_code, rejection_reason
+               rejection_code, rejection_reason, tunnel_url
         FROM transfers
         WHERE transfer_id = $1
         "#,
@@ -148,7 +148,7 @@ pub async fn list_inbox(
                state, size_bytes, declared_mime, filename, blob_sha256, blob_path,
                scanner_verdict, policy_decision,
                created_at, scanned_at, accepted_at, delivered_at, rejected_at,
-               rejection_code, rejection_reason
+               rejection_code, rejection_reason, tunnel_url
         FROM transfers
         WHERE recipient = $1
           AND state IN ('ready_for_pickup','accepted')

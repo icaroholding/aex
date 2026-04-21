@@ -41,3 +41,6 @@ Thumbs.db
 # Tool-specific
 .claude/
 .conductor/
+
+# Runtime data (audit logs, blob storage, signing keys — MUST NEVER be committed)
+data/
