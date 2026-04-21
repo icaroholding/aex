@@ -28,6 +28,10 @@ pub struct TransferRow {
     pub rejection_code: Option<String>,
     pub rejection_reason: Option<String>,
     pub tunnel_url: Option<String>,
+    /// Sprint 2: list of `Endpoint` values the recipient can try in
+    /// sender-ranked order. Coexists with `tunnel_url` until the
+    /// wire bump in week 3 removes the latter (ADR-0036).
+    pub reachable_at: JsonValue,
 }
 
 pub struct InsertTransfer<'a> {
@@ -45,6 +49,9 @@ pub struct InsertTransfer<'a> {
     pub rejection_code: Option<&'a str>,
     pub tunnel_url: Option<&'a str>,
     pub rejection_reason: Option<&'a str>,
+    /// JSON array of `Endpoint` (`crates/aex-core/src/endpoint.rs`).
+    /// `None` inserts an empty array so the NOT NULL column stays valid.
+    pub reachable_at: Option<JsonValue>,
 }
 
 pub async fn insert(pool: &PgPool, t: InsertTransfer<'_>) -> Result<TransferRow, sqlx::Error> {
@@ -59,20 +66,25 @@ pub async fn insert(pool: &PgPool, t: InsertTransfer<'_>) -> Result<TransferRow,
         None
     };
 
+    let reachable_at = t
+        .reachable_at
+        .unwrap_or_else(|| JsonValue::Array(Vec::new()));
+
     sqlx::query_as::<_, TransferRow>(
         r#"
         INSERT INTO transfers (
             transfer_id, sender_agent_id, recipient, recipient_kind,
             state, size_bytes, declared_mime, filename, blob_sha256,
             scanner_verdict, policy_decision,
-            scanned_at, rejected_at, rejection_code, rejection_reason, tunnel_url
+            scanned_at, rejected_at, rejection_code, rejection_reason,
+            tunnel_url, reachable_at
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         RETURNING id, transfer_id, sender_agent_id, recipient, recipient_kind,
                   state, size_bytes, declared_mime, filename, blob_sha256, blob_path,
                   scanner_verdict, policy_decision,
                   created_at, scanned_at, accepted_at, delivered_at, rejected_at,
-                  rejection_code, rejection_reason, tunnel_url
+                  rejection_code, rejection_reason, tunnel_url, reachable_at
         "#,
     )
     .bind(t.transfer_id)
@@ -91,6 +103,7 @@ pub async fn insert(pool: &PgPool, t: InsertTransfer<'_>) -> Result<TransferRow,
     .bind(t.rejection_code)
     .bind(t.rejection_reason)
     .bind(t.tunnel_url)
+    .bind(reachable_at)
     .fetch_one(pool)
     .await
 }
@@ -105,7 +118,7 @@ pub async fn find_by_transfer_id(
                state, size_bytes, declared_mime, filename, blob_sha256, blob_path,
                scanner_verdict, policy_decision,
                created_at, scanned_at, accepted_at, delivered_at, rejected_at,
-               rejection_code, rejection_reason, tunnel_url
+               rejection_code, rejection_reason, tunnel_url, reachable_at
         FROM transfers
         WHERE transfer_id = $1
         "#,
@@ -148,7 +161,7 @@ pub async fn list_inbox(
                state, size_bytes, declared_mime, filename, blob_sha256, blob_path,
                scanner_verdict, policy_decision,
                created_at, scanned_at, accepted_at, delivered_at, rejected_at,
-               rejection_code, rejection_reason, tunnel_url
+               rejection_code, rejection_reason, tunnel_url, reachable_at
         FROM transfers
         WHERE recipient = $1
           AND state IN ('ready_for_pickup','accepted')

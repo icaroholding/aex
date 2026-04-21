@@ -245,6 +245,15 @@ async fn create_transfer(
                 rejection_code: None,
                 rejection_reason: None,
                 tunnel_url: Some(tunnel_url),
+                // Sprint 2 additive: derive a single-endpoint reachable_at
+                // from the legacy tunnel_url until SDKs pass reachable_at
+                // explicitly. Wire bump in week 3 makes this authoritative
+                // and deletes tunnel_url.
+                reachable_at: Some(serde_json::json!([{
+                    "kind": aex_core::Endpoint::KIND_CLOUDFLARE_QUICK,
+                    "url": tunnel_url,
+                    "priority": 0,
+                }])),
             },
         )
         .await?;
@@ -444,6 +453,7 @@ async fn create_transfer(
             rejection_code: None,
             rejection_reason: None,
             tunnel_url: None,
+            reachable_at: None,
         },
     )
     .await?;
@@ -480,6 +490,7 @@ async fn persist_rejected(
             rejection_code: Some(code),
             rejection_reason: Some(reason),
             tunnel_url: None,
+            reachable_at: None,
         },
     )
     .await?;
