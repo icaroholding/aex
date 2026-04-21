@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
-      - name: Publish @aex/sdk
+      - name: Publish @aexproto/sdk
         working-directory: packages/sdk-typescript
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -22,7 +22,7 @@ jobs:
           npm install
           npm run build
           npm publish --access public
-      - name: Publish @aex/mcp-server
+      - name: Publish @aexproto/mcp-server
         working-directory: packages/mcp-server
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

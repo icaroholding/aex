@@ -56,12 +56,12 @@ jobs:
       - uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b  # v4.0.3
         with:
           node-version: "20"
-      - name: Build + test @aex/sdk
+      - name: Build + test @aexproto/sdk
         working-directory: packages/sdk-typescript
         run: |
           npm install
           npm test
-      - name: Build @aex/mcp-server
+      - name: Build @aexproto/mcp-server
         working-directory: packages/mcp-server
         run: |
           npm install

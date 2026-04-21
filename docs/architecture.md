@@ -181,8 +181,8 @@ The routing layer lives in the control plane. SDKs pass the `to` field opaquely;
 
 **Packages (`packages/`):**
 - `sdk-python` — `spize` pip package: `Identity`, `SpizeClient`, canonical wire helpers. 19 tests (cross-language vectors).
-- `sdk-typescript` — `@aex/sdk` npm package: same API surface, Node 18+/Bun. 13 tests.
-- `mcp-server` — `@aex/mcp-server` stdio MCP server exposing `spize_whoami`, `spize_init`, `spize_send`, `spize_inbox`, `spize_download`, `spize_ack` to Claude Desktop / Cursor.
+- `sdk-typescript` — `@aexproto/sdk` npm package: same API surface, Node 18+/Bun. 13 tests.
+- `mcp-server` — `@aexproto/mcp-server` stdio MCP server exposing `spize_whoami`, `spize_init`, `spize_send`, `spize_inbox`, `spize_download`, `spize_ack` to Claude Desktop / Cursor.
 
 **Desktop (`src-tauri/`):**
 - Extended Tauri app with an "Agent" tab: identity wizard, control-plane registration, inbox listing. 0600-perm identity file under `$CONFIG/Spize/`.

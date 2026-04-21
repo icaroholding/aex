@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
-import { Identity } from "@aex/sdk";
+import { Identity } from "@aexproto/sdk";
 
 export class IdentityStore {
   constructor(private readonly path: string) {}

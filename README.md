@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/icaroholding/spize/actions/workflows/ci.yml/badge.svg)](https://github.com/icaroholding/spize/actions)
 [![crates.io](https://img.shields.io/crates/v/aex-core.svg)](https://crates.io/crates/aex-core)
-[![npm](https://img.shields.io/npm/v/@aex/sdk.svg)](https://www.npmjs.com/package/@aex/sdk)
+[![npm](https://img.shields.io/npm/v/@aexproto/sdk.svg)](https://www.npmjs.com/package/@aexproto/sdk)
 [![PyPI](https://img.shields.io/pypi/v/aex-sdk.svg)](https://pypi.org/project/aex-sdk/)
 [![License](https://img.shields.io/badge/license-Apache--2.0%20%2B%20BSL--1.1-blue.svg)](#licensing)
 
@@ -58,7 +58,7 @@ Full walkthrough: [`docs/getting-started.md`](docs/getting-started.md).
 
 - **Control plane** (`aex-control-plane`, BSL-1.1): registry + ticket issuance + audit. Metadata only — never sees the bytes.
 - **Data plane** (`aex-data-plane`, Apache-2.0): sender-side HTTP server exposing a blob by signed ticket. Cloudflare tunnel for NAT traversal.
-- **SDKs** (`aex-sdk` Python, `@aex/sdk` TypeScript, `@aex/mcp-server` for LLM hosts): wrap the wire format + tunnel handshake.
+- **SDKs** (`aex-sdk` Python, `@aexproto/sdk` TypeScript, `@aexproto/mcp-server` for LLM hosts): wrap the wire format + tunnel handshake.
 
 Deep dive: [`docs/architecture.md`](docs/architecture.md). Wire format spec: [`docs/protocol-v1.md`](docs/protocol-v1.md).
 
@@ -102,8 +102,8 @@ crates/
   aex-control-plane — registry + ticket issuer + audit anchor (BSL-1.1)
 packages/
   sdk-python        — aex-sdk on PyPI
-  sdk-typescript    — @aex/sdk on npm
-  mcp-server        — @aex/mcp-server on npm (Claude Desktop / Cursor integration)
+  sdk-typescript    — @aexproto/sdk on npm
+  mcp-server        — @aexproto/mcp-server on npm (Claude Desktop / Cursor integration)
 web/                — landing + operator dashboard + download UI
 deploy/             — docker-compose + (future) Fly.io / Render deploys
 docs/               — architecture, protocol spec, getting started, self-host

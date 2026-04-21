@@ -1,17 +1,17 @@
-# @aex/sdk
+# @aexproto/sdk
 
 TypeScript client for the [Agent Exchange Protocol (AEX)](https://github.com/icaroholding/spize).
 
 ## Install
 
 ```sh
-npm install @aex/sdk
+npm install @aexproto/sdk
 ```
 
 ## Quick start
 
 ```ts
-import { Identity, SpizeClient } from "@aex/sdk";
+import { Identity, SpizeClient } from "@aexproto/sdk";
 
 // One-time: create + register an identity.
 const identity = await Identity.generate({ org: "acme", name: "alice" });

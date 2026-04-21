@@ -1,4 +1,4 @@
-# @aex/mcp-server
+# @aexproto/mcp-server
 
 Model Context Protocol server that gives an LLM host (Claude Desktop, Cursor, OpenClaw, etc.) the ability to **send and receive files as a Spize agent**.
 

@@ -1,5 +1,5 @@
 {
-  "name": "@aex/sdk",
+  "name": "@aexproto/sdk",
   "version": "1.2.0-alpha.1",
   "description": "TypeScript SDK for AEX — the Agent Exchange Protocol.",
   "license": "Apache-2.0",

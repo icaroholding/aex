@@ -18,7 +18,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 
-import { Identity, SpizeClient, SpizeHttpError } from "@aex/sdk";
+import { Identity, SpizeClient, SpizeHttpError } from "@aexproto/sdk";
 
 import { IdentityStore } from "./identityStore.js";
 

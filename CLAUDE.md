@@ -25,8 +25,8 @@ DATABASE_URL=postgres://aex:aex_dev@localhost:5432/aex cargo test --workspace
 
 ## Packages
 - `packages/sdk-python` — PyPI `aex-sdk`, imported as `aex_sdk`
-- `packages/sdk-typescript` — npm `@aex/sdk`
-- `packages/mcp-server` — npm `@aex/mcp-server`
+- `packages/sdk-typescript` — npm `@aexproto/sdk`
+- `packages/mcp-server` — npm `@aexproto/mcp-server`
 
 ## Related
 - Spize Desktop (private): https://github.com/icaroholding/spize-desktop
