@@ -5,6 +5,37 @@ that someone picking it up 3 months later can act without re-discovering the why
 
 ---
 
+## Sprint 2 retrospective items
+
+### Evaluate `SubprocessTunnelBase` extraction
+
+**What.** After Sprint 2 ships IrohTunnel + NamedCloudflareTunnel +
+TailscaleFunnelTunnel + FrpTunnel, look at Quick / Named / Tailscale /
+FRP and check whether they share >60% of their `start()` / `stop()`
+LOC. If yes, extract `SubprocessTunnelBase` holding the common
+"spawn → parse stdout for URL → Drop kills process" shape.
+
+**Why.** Sprint 2 plan-eng-review (2026-04-21) deferred this extraction
+under YAGNI — writing it up front before three concrete impls existed
+would have been premature. The right time is the Sprint 2 `/retro`,
+when we can compare real code side-by-side.
+
+**Pros.** Likely removes a few hundred LOC of duplicated subprocess /
+signal / stdout handling. DRY win proportional to the overlap.
+
+**Cons.** Abstraction is trap-laden — every shared line that makes sense
+in 2 tunnels can become a forced fit in the 3rd. If overlap is <60 %,
+don't extract.
+
+**Depends on.** Sprint 2 tasks 2, 3, 4, 5 landed. Review during
+`/retro` at Sprint 2 end.
+
+**Where to start.** Diff `crates/aex-tunnel/src/cloudflare.rs` against
+`named_cloudflare.rs` and `tailscale.rs`. If the `start()` bodies are
+mostly the same up to a config struct and a regex, extract.
+
+---
+
 ## Sprint 2 — aex-net follow-ups
 
 ### Extract `verify_tunnel_reachable` into `aex-net::dns::wait_for_host_reachable`
