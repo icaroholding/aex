@@ -90,11 +90,7 @@ impl Event {
     /// Key order is fixed; payload is canonicalized recursively (sorted
     /// object keys, no whitespace). This bytestring uniquely determines
     /// `this_hash` given a stable input.
-    pub fn canonical_bytes(
-        &self,
-        ts: OffsetDateTime,
-        prev_hash: &str,
-    ) -> AuditResult<Vec<u8>> {
+    pub fn canonical_bytes(&self, ts: OffsetDateTime, prev_hash: &str) -> AuditResult<Vec<u8>> {
         if !matches!(self.payload, serde_json::Value::Object(_)) {
             return Err(AuditError::InvalidEvent(
                 "payload must be a JSON object".into(),

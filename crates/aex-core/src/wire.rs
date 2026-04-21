@@ -252,11 +252,19 @@ mod tests {
     #[test]
     fn different_inputs_different_bytes() {
         let a = registration_challenge_bytes(
-            "aa", "acme", "alice", "0123456789abcdef0123456789abcdef", 100,
+            "aa",
+            "acme",
+            "alice",
+            "0123456789abcdef0123456789abcdef",
+            100,
         )
         .unwrap();
         let b = registration_challenge_bytes(
-            "aa", "acme", "alice", "0123456789abcdef0123456789abcdef", 101,
+            "aa",
+            "acme",
+            "alice",
+            "0123456789abcdef0123456789abcdef",
+            101,
         )
         .unwrap();
         assert_ne!(a, b);
@@ -290,8 +298,7 @@ mod tests {
 
     #[test]
     fn short_nonce_rejected() {
-        let err = registration_challenge_bytes("aa", "acme", "alice", "deadbeef", 100)
-            .unwrap_err();
+        let err = registration_challenge_bytes("aa", "acme", "alice", "deadbeef", 100).unwrap_err();
         assert!(matches!(err, Error::Internal(_)));
     }
 

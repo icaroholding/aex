@@ -87,8 +87,8 @@ impl TicketVerifier {
             });
         }
 
-        let sig_bytes = hex::decode(&ticket.signature)
-            .map_err(|e| TicketError::Encoding(e.to_string()))?;
+        let sig_bytes =
+            hex::decode(&ticket.signature).map_err(|e| TicketError::Encoding(e.to_string()))?;
         let sig_arr: [u8; 64] = sig_bytes
             .as_slice()
             .try_into()

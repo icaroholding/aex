@@ -61,11 +61,7 @@ impl ScanVerdict {
         }
     }
 
-    pub fn error(
-        scanner: impl Into<String>,
-        details: impl Into<String>,
-        duration_ms: u64,
-    ) -> Self {
+    pub fn error(scanner: impl Into<String>, details: impl Into<String>, duration_ms: u64) -> Self {
         Self {
             scanner: scanner.into(),
             result: ScanResult::Error,

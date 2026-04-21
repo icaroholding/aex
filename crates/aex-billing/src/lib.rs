@@ -28,9 +28,9 @@ pub use error::{BillingError, BillingResult};
 pub use memory::InMemoryBilling;
 pub use stripe::StripeBilling;
 
+use aex_policy::TierName;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use aex_policy::TierName;
 
 /// Identifier the billing backend uses for an org. Shape varies per
 /// provider (Stripe = `cus_…`, in-memory = org name).

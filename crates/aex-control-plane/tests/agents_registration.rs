@@ -15,8 +15,8 @@ use rand::rngs::OsRng;
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
-use common::{random_nonce, TestEnv};
 use aex_core::wire::registration_challenge_bytes;
+use common::{random_nonce, TestEnv};
 
 fn build_payload(signing_key: &SigningKey, org: &str, name: &str) -> serde_json::Value {
     build_payload_with_nonce(signing_key, org, name, &random_nonce())
@@ -118,8 +118,7 @@ async fn mismatched_public_key_rejected(pool: PgPool) {
     let signer = SigningKey::generate(&mut OsRng);
     let impersonator = SigningKey::generate(&mut OsRng);
     let mut payload = build_payload(&signer, "acme", "alice");
-    payload["public_key_hex"] =
-        Value::String(hex::encode(impersonator.verifying_key().to_bytes()));
+    payload["public_key_hex"] = Value::String(hex::encode(impersonator.verifying_key().to_bytes()));
     let (status, _) = env.post_json("/v1/agents/register", &payload).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 }

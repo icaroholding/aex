@@ -58,9 +58,7 @@ impl TestEnv {
     pub async fn request(&self, request: Request<Body>) -> (StatusCode, Value) {
         let resp = self.app.clone().oneshot(request).await.unwrap();
         let status = resp.status();
-        let bytes = to_bytes(resp.into_body(), 256 * 1024 * 1024)
-            .await
-            .unwrap();
+        let bytes = to_bytes(resp.into_body(), 256 * 1024 * 1024).await.unwrap();
         let json: Value = if bytes.is_empty() {
             Value::Null
         } else {

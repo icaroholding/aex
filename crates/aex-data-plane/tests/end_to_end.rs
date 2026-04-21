@@ -33,10 +33,7 @@ fn sign_ticket(
 #[tokio::test]
 async fn good_ticket_verifies() {
     let signing_key = SigningKey::generate(&mut OsRng);
-    let verifier = TicketVerifier::new(
-        signing_key.verifying_key(),
-        "https://alice.tunnel.example",
-    );
+    let verifier = TicketVerifier::new(signing_key.verifying_key(), "https://alice.tunnel.example");
     let now = time::OffsetDateTime::now_utc().unix_timestamp();
     let ticket = sign_ticket(
         &signing_key,
@@ -53,10 +50,7 @@ async fn good_ticket_verifies() {
 #[tokio::test]
 async fn expired_ticket_rejected() {
     let signing_key = SigningKey::generate(&mut OsRng);
-    let verifier = TicketVerifier::new(
-        signing_key.verifying_key(),
-        "https://alice.tunnel.example",
-    );
+    let verifier = TicketVerifier::new(signing_key.verifying_key(), "https://alice.tunnel.example");
     let ticket = sign_ticket(
         &signing_key,
         "tx_abc123",
@@ -65,16 +59,16 @@ async fn expired_ticket_rejected() {
         1,
         "0123456789abcdef0123456789abcdef",
     );
-    assert!(matches!(verifier.verify(&ticket).unwrap_err(), TicketError::Expired { .. }));
+    assert!(matches!(
+        verifier.verify(&ticket).unwrap_err(),
+        TicketError::Expired { .. }
+    ));
 }
 
 #[tokio::test]
 async fn wrong_audience_rejected() {
     let signing_key = SigningKey::generate(&mut OsRng);
-    let verifier = TicketVerifier::new(
-        signing_key.verifying_key(),
-        "https://alice.tunnel.example",
-    );
+    let verifier = TicketVerifier::new(signing_key.verifying_key(), "https://alice.tunnel.example");
     let now = time::OffsetDateTime::now_utc().unix_timestamp();
     let ticket = sign_ticket(
         &signing_key,
@@ -84,16 +78,16 @@ async fn wrong_audience_rejected() {
         now + 60,
         "0123456789abcdef0123456789abcdef",
     );
-    assert!(matches!(verifier.verify(&ticket).unwrap_err(), TicketError::WrongAudience { .. }));
+    assert!(matches!(
+        verifier.verify(&ticket).unwrap_err(),
+        TicketError::WrongAudience { .. }
+    ));
 }
 
 #[tokio::test]
 async fn nonce_replay_rejected() {
     let signing_key = SigningKey::generate(&mut OsRng);
-    let verifier = TicketVerifier::new(
-        signing_key.verifying_key(),
-        "https://alice.tunnel.example",
-    );
+    let verifier = TicketVerifier::new(signing_key.verifying_key(), "https://alice.tunnel.example");
     let now = time::OffsetDateTime::now_utc().unix_timestamp();
     let ticket = sign_ticket(
         &signing_key,
@@ -104,7 +98,10 @@ async fn nonce_replay_rejected() {
         "0123456789abcdef0123456789abcdef",
     );
     assert!(verifier.verify(&ticket).is_ok());
-    assert!(matches!(verifier.verify(&ticket).unwrap_err(), TicketError::NonceReplay));
+    assert!(matches!(
+        verifier.verify(&ticket).unwrap_err(),
+        TicketError::NonceReplay
+    ));
 }
 
 #[tokio::test]

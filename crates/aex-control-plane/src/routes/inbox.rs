@@ -6,11 +6,7 @@
 //! querying (we don't want to leak transfer metadata to unauthenticated
 //! probes).
 
-use axum::{
-    extract::State,
-    routing::post,
-    Json, Router,
-};
+use axum::{extract::State, routing::post, Json, Router};
 use ed25519_dalek::{Signature as DalekSignature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -74,7 +70,9 @@ async fn list_inbox(
     }
     let now = OffsetDateTime::now_utc().unix_timestamp();
     if !aex_core::wire::is_within_clock_skew(now, req.issued_at) {
-        return Err(ApiError::BadRequest("issued_at outside allowed skew".into()));
+        return Err(ApiError::BadRequest(
+            "issued_at outside allowed skew".into(),
+        ));
     }
 
     let recipient = AgentId::new(&req.recipient_agent_id)?;
@@ -91,12 +89,13 @@ async fn list_inbox(
     )
     .map_err(|e| ApiError::BadRequest(format!("canonical: {}", e)))?;
 
-    let vk_bytes: [u8; PUBLIC_KEY_LEN] = rec_row.public_key.as_slice().try_into().map_err(|_| {
-        ApiError::internal(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "bad pubkey length",
-        ))
-    })?;
+    let vk_bytes: [u8; PUBLIC_KEY_LEN] =
+        rec_row.public_key.as_slice().try_into().map_err(|_| {
+            ApiError::internal(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "bad pubkey length",
+            ))
+        })?;
     let vk = VerifyingKey::from_bytes(&vk_bytes)
         .map_err(|e| ApiError::internal(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))?;
 
@@ -105,10 +104,7 @@ async fn list_inbox(
     if sig_bytes.len() != SIGNATURE_LEN {
         return Err(ApiError::BadRequest("signature must be 64 bytes".into()));
     }
-    let sig_arr: [u8; SIGNATURE_LEN] = sig_bytes
-        .as_slice()
-        .try_into()
-        .expect("length checked");
+    let sig_arr: [u8; SIGNATURE_LEN] = sig_bytes.as_slice().try_into().expect("length checked");
     vk.verify(&canonical, &DalekSignature::from_bytes(&sig_arr))
         .map_err(|_| ApiError::Unauthorized("inbox signature invalid".into()))?;
 

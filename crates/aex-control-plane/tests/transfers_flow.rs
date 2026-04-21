@@ -7,10 +7,8 @@ use ed25519_dalek::{Signer, SigningKey};
 use serde_json::{json, Value};
 use sqlx::PgPool;
 
+use aex_core::wire::{registration_challenge_bytes, transfer_intent_bytes, transfer_receipt_bytes};
 use common::{gen_signing_key, random_nonce, TestEnv};
-use aex_core::wire::{
-    registration_challenge_bytes, transfer_intent_bytes, transfer_receipt_bytes,
-};
 
 struct Agent {
     key: SigningKey,
@@ -244,10 +242,7 @@ async fn download_with_wrong_signature_rejected(pool: PgPool) {
     recpt["signature_hex"] = Value::String(flipped);
 
     let (status, _) = env
-        .post_json(
-            &format!("/v1/transfers/{}/download", transfer_id),
-            &recpt,
-        )
+        .post_json(&format!("/v1/transfers/{}/download", transfer_id), &recpt)
         .await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 }
@@ -403,5 +398,8 @@ async fn inbox_excludes_delivered(pool: PgPool) {
     .await;
 
     let (_, inbox) = env.post_json("/v1/inbox", &build_inbox_query(&bob)).await;
-    assert_eq!(inbox["count"], 0, "delivered transfers should not show in inbox");
+    assert_eq!(
+        inbox["count"], 0,
+        "delivered transfers should not show in inbox"
+    );
 }

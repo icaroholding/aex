@@ -213,11 +213,7 @@ mod tests {
         .unwrap();
 
         let stub = Arc::new(StubRekorSubmitter::new());
-        let anchored = RekorAnchoredAuditLog::new(
-            log,
-            stub.clone(),
-            Duration::from_secs(60),
-        );
+        let anchored = RekorAnchoredAuditLog::new(log, stub.clone(), Duration::from_secs(60));
         let receipt = anchored.submit_now().await.unwrap();
         assert_eq!(receipt.position, 1);
         assert_eq!(receipt.chain_head.len(), 64);
@@ -229,11 +225,8 @@ mod tests {
     #[tokio::test]
     async fn wrapping_passes_through_audit_log_trait() {
         let stub = Arc::new(StubRekorSubmitter::new());
-        let anchored = RekorAnchoredAuditLog::new(
-            MemoryAuditLog::new(),
-            stub,
-            Duration::from_secs(60),
-        );
+        let anchored =
+            RekorAnchoredAuditLog::new(MemoryAuditLog::new(), stub, Duration::from_secs(60));
         for i in 0..3 {
             anchored
                 .append(Event::new(
@@ -262,6 +255,10 @@ mod tests {
         handle.abort();
 
         let history = stub.history().await;
-        assert!(history.len() >= 2, "expected >=2 submissions, got {}", history.len());
+        assert!(
+            history.len() >= 2,
+            "expected >=2 submissions, got {}",
+            history.len()
+        );
     }
 }

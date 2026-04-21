@@ -73,9 +73,7 @@ async fn get_blob(
             let (code, msg) = match &err {
                 DataPlaneError::BlobNotFound(_) => (StatusCode::NOT_FOUND, "not found"),
                 DataPlaneError::Ticket(_) => (StatusCode::UNAUTHORIZED, "bad ticket"),
-                DataPlaneError::ScannerBlocked { .. } => {
-                    (StatusCode::FORBIDDEN, "scanner blocked")
-                }
+                DataPlaneError::ScannerBlocked { .. } => (StatusCode::FORBIDDEN, "scanner blocked"),
                 _ => (StatusCode::INTERNAL_SERVER_ERROR, "internal error"),
             };
             tracing::warn!(%transfer_id, error = %err, code = %code, "data-plane refused request");
@@ -125,13 +123,12 @@ async fn serve(
                     .with_declared_mime(&metadata.mime);
                 let verdict = scanner.scan(&input).await;
                 if verdict.is_blocking() {
-                    let reason = serde_json::to_string(&verdict).unwrap_or_else(|_| {
-                        format!("{:?}", verdict.overall)
-                    });
-                    cfg.scan_cache
-                        .write()
-                        .await
-                        .insert(transfer_id.to_string(), ScanVerdictCache::Blocked(reason.clone()));
+                    let reason = serde_json::to_string(&verdict)
+                        .unwrap_or_else(|_| format!("{:?}", verdict.overall));
+                    cfg.scan_cache.write().await.insert(
+                        transfer_id.to_string(),
+                        ScanVerdictCache::Blocked(reason.clone()),
+                    );
                     return Err(DataPlaneError::ScannerBlocked { verdict: reason });
                 }
                 cfg.scan_cache

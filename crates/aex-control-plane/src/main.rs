@@ -6,11 +6,7 @@ use tracing_subscriber::{prelude::*, EnvFilter};
 
 use aex_audit::FileAuditLog;
 use aex_control_plane::{
-    blob::FileBlobStore,
-    build_app_with_cors,
-    config::Config,
-    signer::ControlPlaneSigner,
-    AppState,
+    blob::FileBlobStore, build_app_with_cors, config::Config, signer::ControlPlaneSigner, AppState,
 };
 use aex_policy::{TierName, TierPolicy};
 use aex_scanner::{

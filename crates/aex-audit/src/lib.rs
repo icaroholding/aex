@@ -38,8 +38,7 @@ pub use event::{Event, EventKind, EventReceipt};
 pub use file_log::FileAuditLog;
 pub use memory_log::MemoryAuditLog;
 pub use rekor::{
-    LoggingRekorSubmitter, RekorAnchoredAuditLog, RekorReceipt, RekorSubmitter,
-    StubRekorSubmitter,
+    LoggingRekorSubmitter, RekorAnchoredAuditLog, RekorReceipt, RekorSubmitter, StubRekorSubmitter,
 };
 
 use async_trait::async_trait;

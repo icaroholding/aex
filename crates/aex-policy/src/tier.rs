@@ -4,9 +4,9 @@
 //! Fields are public so the control plane can load per-org overrides at
 //! startup (e.g. raised size caps for paying customers).
 
+use aex_scanner::{PipelineVerdict, ScanResult};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use aex_scanner::{PipelineVerdict, ScanResult};
 
 use crate::{
     decision::{PolicyDecision, TierName},
@@ -87,9 +87,7 @@ impl PolicyEngine for TierPolicy {
         }
 
         // 2. Human-bridge gate.
-        if !self.allow_human_bridge
-            && matches!(req.recipient_kind, RecipientKind::HumanBridge)
-        {
+        if !self.allow_human_bridge && matches!(req.recipient_kind, RecipientKind::HumanBridge) {
             return PolicyDecision::deny(
                 "human_bridge_disallowed",
                 "this tier does not permit sending to email/phone recipients",
@@ -240,9 +238,11 @@ mod tests {
     #[tokio::test]
     async fn suspicious_allowed_only_in_dev() {
         let a = alice();
-        let verdict = PipelineVerdict::aggregate(vec![
-            ScanVerdict::suspicious("regex-prompt-injection", "x", 1),
-        ]);
+        let verdict = PipelineVerdict::aggregate(vec![ScanVerdict::suspicious(
+            "regex-prompt-injection",
+            "x",
+            1,
+        )]);
         let dev = TierPolicy::for_tier(TierName::Dev);
         let req = base_req(&a).with_verdict(&verdict);
         assert!(dev.evaluate(&req).await.is_allow());
@@ -258,11 +258,12 @@ mod tests {
     #[tokio::test]
     async fn scanner_error_fail_open_dev_fail_closed_ent() {
         let a = alice();
-        let verdict = PipelineVerdict::aggregate(vec![
-            ScanVerdict::error("eicar", "crashed", 1),
-        ]);
+        let verdict = PipelineVerdict::aggregate(vec![ScanVerdict::error("eicar", "crashed", 1)]);
         let dev = TierPolicy::for_tier(TierName::Dev);
-        assert!(dev.evaluate(&base_req(&a).with_verdict(&verdict)).await.is_allow());
+        assert!(dev
+            .evaluate(&base_req(&a).with_verdict(&verdict))
+            .await
+            .is_allow());
 
         let ent = TierPolicy::for_tier(TierName::Enterprise);
         let d = ent.evaluate(&base_req(&a).with_verdict(&verdict)).await;

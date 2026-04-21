@@ -47,15 +47,14 @@ impl Config {
         let database_url =
             env::var("DATABASE_URL").map_err(|_| ConfigError::Missing("DATABASE_URL"))?;
 
-        let bind_addr_str =
-            env::var("BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
+        let bind_addr_str = env::var("BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
         let bind_addr: SocketAddr =
-            bind_addr_str.parse().map_err(|e: std::net::AddrParseError| {
-                ConfigError::Invalid {
+            bind_addr_str
+                .parse()
+                .map_err(|e: std::net::AddrParseError| ConfigError::Invalid {
                     name: "BIND_ADDR",
                     msg: e.to_string(),
-                }
-            })?;
+                })?;
 
         let audit_log_path = env::var("AUDIT_LOG_PATH")
             .map(PathBuf::from)
@@ -70,12 +69,12 @@ impl Config {
             .unwrap_or_else(|_| PathBuf::from(DEFAULT_SIGNING_KEY_PATH));
 
         let max_transfer_bytes = match env::var("MAX_TRANSFER_BYTES") {
-            Ok(v) => v.parse().map_err(|e: std::num::ParseIntError| {
-                ConfigError::Invalid {
+            Ok(v) => v
+                .parse()
+                .map_err(|e: std::num::ParseIntError| ConfigError::Invalid {
                     name: "MAX_TRANSFER_BYTES",
                     msg: e.to_string(),
-                }
-            })?,
+                })?,
             Err(_) => DEFAULT_MAX_TRANSFER_BYTES,
         };
 

@@ -126,7 +126,8 @@ mod tests {
     #[tokio::test]
     async fn registered_org_returns_seeded_tier() {
         let b = StripeBilling::new("sk_test_xxx", "spize.transfers");
-        b.register_org("acme", "cus_123", TierName::Enterprise).await;
+        b.register_org("acme", "cus_123", TierName::Enterprise)
+            .await;
         assert_eq!(b.tier_for("acme").await.unwrap(), TierName::Enterprise);
     }
 

@@ -164,19 +164,13 @@ mod tests {
 
     #[test]
     fn empty_rejected() {
-        assert!(matches!(
-            AgentId::new(""),
-            Err(Error::InvalidAgentId(_))
-        ));
+        assert!(matches!(AgentId::new(""), Err(Error::InvalidAgentId(_))));
     }
 
     #[test]
     fn too_long_rejected() {
         let long = "spize:acme/alice:".to_string() + &"a".repeat(300);
-        assert!(matches!(
-            AgentId::new(long),
-            Err(Error::InvalidAgentId(_))
-        ));
+        assert!(matches!(AgentId::new(long), Err(Error::InvalidAgentId(_))));
     }
 
     #[test]

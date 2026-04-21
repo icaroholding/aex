@@ -30,11 +30,7 @@ use aex_core::wire::{
     registration_challenge_bytes, MAX_CLOCK_SKEW_SECS, MAX_NONCE_LEN, MIN_NONCE_LEN,
 };
 
-use crate::{
-    db::agents as db,
-    error::ApiError,
-    AppState,
-};
+use crate::{db::agents as db, error::ApiError, AppState};
 
 const PUBLIC_KEY_LEN: usize = 32;
 const SIGNATURE_LEN: usize = 64;
@@ -171,10 +167,7 @@ async fn register(
         )),
         Err(err) => {
             if let Some(field) = db::unique_violation_field(&err) {
-                Err(ApiError::Conflict(format!(
-                    "{} already registered",
-                    field
-                )))
+                Err(ApiError::Conflict(format!("{} already registered", field)))
             } else {
                 Err(err.into())
             }

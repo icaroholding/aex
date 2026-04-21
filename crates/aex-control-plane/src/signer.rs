@@ -79,11 +79,7 @@ impl ControlPlaneSigner {
         use std::os::unix::fs::OpenOptionsExt;
         let tmp = path.with_extension("tmp");
         let mut options = std::fs::OpenOptions::new();
-        options
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600);
+        options.write(true).create(true).truncate(true).mode(0o600);
         // tokio::fs doesn't expose OpenOptionsExt directly; use std then convert.
         let f = options.open(&tmp)?;
         drop(f);
@@ -137,7 +133,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("signing-key.bin");
         tokio::fs::write(&path, b"short").await.unwrap();
-        let err = ControlPlaneSigner::load_or_generate(&path).await.unwrap_err();
+        let err = ControlPlaneSigner::load_or_generate(&path)
+            .await
+            .unwrap_err();
         assert!(matches!(err, SignerError::BadLength(5)));
     }
 

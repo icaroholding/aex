@@ -26,9 +26,7 @@ struct PublicKeyBody {
 
 /// Publishes the control-plane's Ed25519 public key so data-plane
 /// servers can verify tickets without an out-of-band key exchange.
-async fn public_key(
-    State(state): State<AppState>,
-) -> Result<Json<PublicKeyBody>, StatusCode> {
+async fn public_key(State(state): State<AppState>) -> Result<Json<PublicKeyBody>, StatusCode> {
     let signer = state.signer.ok_or(StatusCode::NOT_FOUND)?;
     Ok(Json(PublicKeyBody {
         algorithm: "ed25519",

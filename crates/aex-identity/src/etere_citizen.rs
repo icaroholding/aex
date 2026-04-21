@@ -198,16 +198,15 @@ impl IdentityProvider for EtereCitizenProvider {
             )));
         }
 
-        let vk = self
-            .registry
-            .lookup(peer_id)
-            .await
-            .ok_or_else(|| Error::NotFound(format!("peer {} not in EtereCitizen registry", peer_id)))?;
+        let vk = self.registry.lookup(peer_id).await.ok_or_else(|| {
+            Error::NotFound(format!("peer {} not in EtereCitizen registry", peer_id))
+        })?;
 
         let sig = K256Signature::from_slice(&signature.bytes)
             .map_err(|e| Error::SignatureFormat(format!("malformed ecdsa: {}", e)))?;
 
-        vk.verify(message, &sig).map_err(|_| Error::SignatureInvalid)
+        vk.verify(message, &sig)
+            .map_err(|_| Error::SignatureInvalid)
     }
 
     async fn trust_metadata(&self, peer_id: &AgentId) -> Option<TrustMetadata> {
@@ -224,8 +223,10 @@ mod tests {
         let reg = Arc::new(EtereCitizenRegistry::new());
         let alice = EtereCitizenProvider::generate(DEFAULT_CHAIN_ID, reg.clone()).unwrap();
         let bob = EtereCitizenProvider::generate(DEFAULT_CHAIN_ID, reg.clone()).unwrap();
-        reg.register(alice.agent_id().clone(), alice.verifying_key()).await;
-        reg.register(bob.agent_id().clone(), bob.verifying_key()).await;
+        reg.register(alice.agent_id().clone(), alice.verifying_key())
+            .await;
+        reg.register(bob.agent_id().clone(), bob.verifying_key())
+            .await;
 
         let msg = b"hello from alice";
         let sig = alice.sign(msg).await.unwrap();
@@ -237,8 +238,10 @@ mod tests {
         let reg = Arc::new(EtereCitizenRegistry::new());
         let alice = EtereCitizenProvider::generate(DEFAULT_CHAIN_ID, reg.clone()).unwrap();
         let bob = EtereCitizenProvider::generate(DEFAULT_CHAIN_ID, reg.clone()).unwrap();
-        reg.register(alice.agent_id().clone(), alice.verifying_key()).await;
-        reg.register(bob.agent_id().clone(), bob.verifying_key()).await;
+        reg.register(alice.agent_id().clone(), alice.verifying_key())
+            .await;
+        reg.register(bob.agent_id().clone(), bob.verifying_key())
+            .await;
 
         let sig = alice.sign(b"hello").await.unwrap();
         let err = bob
@@ -255,7 +258,10 @@ mod tests {
         let bob = EtereCitizenProvider::generate(DEFAULT_CHAIN_ID, reg.clone()).unwrap();
         // alice NOT registered
         let sig = alice.sign(b"hi").await.unwrap();
-        let err = bob.verify_peer(alice.agent_id(), b"hi", &sig).await.unwrap_err();
+        let err = bob
+            .verify_peer(alice.agent_id(), b"hi", &sig)
+            .await
+            .unwrap_err();
         assert!(matches!(err, Error::NotFound(_)));
     }
 
@@ -264,8 +270,10 @@ mod tests {
         let reg = Arc::new(EtereCitizenRegistry::new());
         let alice = EtereCitizenProvider::generate(DEFAULT_CHAIN_ID, reg.clone()).unwrap();
         let bob = EtereCitizenProvider::generate(DEFAULT_CHAIN_ID, reg.clone()).unwrap();
-        reg.register(alice.agent_id().clone(), alice.verifying_key()).await;
-        reg.register(bob.agent_id().clone(), bob.verifying_key()).await;
+        reg.register(alice.agent_id().clone(), alice.verifying_key())
+            .await;
+        reg.register(bob.agent_id().clone(), bob.verifying_key())
+            .await;
 
         let wrong = Signature {
             algorithm: SignatureAlgorithm::Ed25519,
@@ -283,7 +291,8 @@ mod tests {
         let reg = Arc::new(EtereCitizenRegistry::new());
         let alice = EtereCitizenProvider::generate(DEFAULT_CHAIN_ID, reg.clone()).unwrap();
         let bob = EtereCitizenProvider::generate(DEFAULT_CHAIN_ID, reg.clone()).unwrap();
-        reg.register(bob.agent_id().clone(), bob.verifying_key()).await;
+        reg.register(bob.agent_id().clone(), bob.verifying_key())
+            .await;
         reg.set_reputation(
             bob.agent_id().clone(),
             TrustMetadata {
@@ -312,7 +321,8 @@ mod tests {
     fn deterministic_from_secret() {
         let reg = Arc::new(EtereCitizenRegistry::new());
         let secret = [3u8; 32];
-        let a = EtereCitizenProvider::from_secret_bytes(DEFAULT_CHAIN_ID, secret, reg.clone()).unwrap();
+        let a =
+            EtereCitizenProvider::from_secret_bytes(DEFAULT_CHAIN_ID, secret, reg.clone()).unwrap();
         let b = EtereCitizenProvider::from_secret_bytes(DEFAULT_CHAIN_ID, secret, reg).unwrap();
         assert_eq!(a.agent_id(), b.agent_id());
     }

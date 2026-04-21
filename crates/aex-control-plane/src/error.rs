@@ -94,17 +94,12 @@ impl From<aex_core::Error> for ApiError {
         use aex_core::Error::*;
         match err {
             InvalidAgentId(m) => ApiError::BadRequest(format!("invalid agent_id: {}", m)),
-            UnknownIdentityScheme => {
-                ApiError::BadRequest("unknown identity scheme".into())
-            }
-            SignatureInvalid => {
-                ApiError::Unauthorized("signature verification failed".into())
-            }
+            UnknownIdentityScheme => ApiError::BadRequest("unknown identity scheme".into()),
+            SignatureInvalid => ApiError::Unauthorized("signature verification failed".into()),
             SignatureFormat(m) => ApiError::BadRequest(format!("bad signature: {}", m)),
-            KeyUnavailable(m) => ApiError::Internal(Box::new(SimpleError(format!(
-                "key unavailable: {}",
-                m
-            )))),
+            KeyUnavailable(m) => {
+                ApiError::Internal(Box::new(SimpleError(format!("key unavailable: {}", m))))
+            }
             NotFound(m) => ApiError::NotFound(m),
             Io(e) => ApiError::Internal(Box::new(e)),
             Crypto(m) => ApiError::BadRequest(format!("crypto error: {}", m)),

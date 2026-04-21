@@ -36,9 +36,7 @@ use time::OffsetDateTime;
 use std::sync::Arc;
 
 use aex_audit::{AuditLog, Event, EventKind};
-use aex_core::wire::{
-    transfer_intent_bytes, transfer_receipt_bytes, MAX_NONCE_LEN, MIN_NONCE_LEN,
-};
+use aex_core::wire::{transfer_intent_bytes, transfer_receipt_bytes, MAX_NONCE_LEN, MIN_NONCE_LEN};
 use aex_core::AgentId;
 use aex_policy::{PolicyDecision, PolicyRequest, RecipientKind};
 use aex_scanner::{PipelineVerdict, ScanInput};
@@ -146,7 +144,9 @@ async fn create_transfer(
     }
     let now = OffsetDateTime::now_utc().unix_timestamp();
     if !aex_core::wire::is_within_clock_skew(now, req.issued_at) {
-        return Err(ApiError::BadRequest("issued_at outside allowed skew".into()));
+        return Err(ApiError::BadRequest(
+            "issued_at outside allowed skew".into(),
+        ));
     }
 
     // ---- M2 branch: sender serves bytes via Cloudflare tunnel ----
@@ -180,13 +180,19 @@ async fn create_transfer(
         if sig_bytes.len() != SIGNATURE_LEN {
             return Err(ApiError::BadRequest("signature must be 64 bytes".into()));
         }
-        let sender_pubkey_arr: [u8; 32] = sender_row.public_key.as_slice().try_into().map_err(|_| {
-            ApiError::Internal(Box::new(crate::error::SimpleError("pubkey length".to_string())))
-        })?;
-        let sender_pubkey = ed25519_dalek::VerifyingKey::from_bytes(&sender_pubkey_arr)
-            .map_err(|e| ApiError::Internal(Box::new(crate::error::SimpleError(format!(
-                "pubkey parse: {}", e
-            )))))?;
+        let sender_pubkey_arr: [u8; 32] =
+            sender_row.public_key.as_slice().try_into().map_err(|_| {
+                ApiError::Internal(Box::new(crate::error::SimpleError(
+                    "pubkey length".to_string(),
+                )))
+            })?;
+        let sender_pubkey =
+            ed25519_dalek::VerifyingKey::from_bytes(&sender_pubkey_arr).map_err(|e| {
+                ApiError::Internal(Box::new(crate::error::SimpleError(format!(
+                    "pubkey parse: {}",
+                    e
+                ))))
+            })?;
         let sig_arr: [u8; 64] = sig_bytes.as_slice().try_into().unwrap();
         let sig = ed25519_dalek::Signature::from_bytes(&sig_arr);
         use ed25519_dalek::Verifier;
@@ -198,7 +204,9 @@ async fn create_transfer(
         tx_db::consume_intent_nonce(&state.db, sender.as_str(), &req.nonce)
             .await
             .map_err(|e| match e {
-                sqlx::Error::Database(d) if d.constraint() == Some("transfer_intent_nonces_pkey") => {
+                sqlx::Error::Database(d)
+                    if d.constraint() == Some("transfer_intent_nonces_pkey") =>
+                {
                     ApiError::Conflict("intent nonce already used".into())
                 }
                 other => ApiError::from(other),
@@ -233,8 +241,8 @@ async fn create_transfer(
     // ---- End M2 branch. Fallback: M1 blob-hex flow. ----
 
     // Decode blob + signature.
-    let blob = hex::decode(&req.blob_hex)
-        .map_err(|e| ApiError::BadRequest(format!("blob_hex: {}", e)))?;
+    let blob =
+        hex::decode(&req.blob_hex).map_err(|e| ApiError::BadRequest(format!("blob_hex: {}", e)))?;
     let sig_bytes = hex::decode(&req.intent_signature_hex)
         .map_err(|e| ApiError::BadRequest(format!("intent_signature_hex: {}", e)))?;
     if sig_bytes.len() != SIGNATURE_LEN {
@@ -256,10 +264,7 @@ async fn create_transfer(
     .map_err(|e| ApiError::BadRequest(format!("cannot build intent: {}", e)))?;
 
     let vk = verifying_key_from_pubkey_bytes(&sender_row.public_key)?;
-    let dalek_sig: [u8; SIGNATURE_LEN] = sig_bytes
-        .as_slice()
-        .try_into()
-        .expect("length checked");
+    let dalek_sig: [u8; SIGNATURE_LEN] = sig_bytes.as_slice().try_into().expect("length checked");
     vk.verify(&canonical, &DalekSignature::from_bytes(&dalek_sig))
         .map_err(|_| ApiError::Unauthorized("intent signature invalid".into()))?;
 
@@ -389,7 +394,11 @@ async fn create_transfer(
             recipient_kind,
             size_bytes,
             Some(&verdict),
-            Some(serde_json::to_value(&post_decision).ok().unwrap_or_default()),
+            Some(
+                serde_json::to_value(&post_decision)
+                    .ok()
+                    .unwrap_or_default(),
+            ),
             code,
             reason,
         )
@@ -608,7 +617,9 @@ async fn verify_recipient_receipt(
     }
     let now = OffsetDateTime::now_utc().unix_timestamp();
     if !aex_core::wire::is_within_clock_skew(now, req.issued_at) {
-        return Err(ApiError::BadRequest("issued_at outside allowed skew".into()));
+        return Err(ApiError::BadRequest(
+            "issued_at outside allowed skew".into(),
+        ));
     }
 
     let recipient = AgentId::new(&req.recipient_agent_id)?;
@@ -648,12 +659,12 @@ async fn verify_recipient_receipt(
 // ---------- helpers ----------
 
 fn verifying_key_from_pubkey_bytes(bytes: &[u8]) -> Result<VerifyingKey, ApiError> {
-    let arr: [u8; PUBLIC_KEY_LEN] = bytes
-        .try_into()
-        .map_err(|_| ApiError::internal(std::io::Error::new(
+    let arr: [u8; PUBLIC_KEY_LEN] = bytes.try_into().map_err(|_| {
+        ApiError::internal(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "bad pubkey length in database",
-        )))?;
+        ))
+    })?;
     VerifyingKey::from_bytes(&arr)
         .map_err(|e| ApiError::internal(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))
 }
@@ -704,7 +715,6 @@ fn row_to_response(row: tx_db::TransferRow) -> TransferResponse {
     }
 }
 
-
 // ============================================================================
 // M2: data-plane ticket issuance
 // ============================================================================
@@ -752,14 +762,18 @@ pub async fn issue_ticket(
 
     let now = OffsetDateTime::now_utc().unix_timestamp();
     if !aex_core::wire::is_within_clock_skew(now, req.issued_at) {
-        return Err(ApiError::BadRequest("issued_at outside allowed skew".into()));
+        return Err(ApiError::BadRequest(
+            "issued_at outside allowed skew".into(),
+        ));
     }
 
     let row = tx_db::find_by_transfer_id(&state.db, &transfer_id)
         .await?
         .ok_or_else(|| ApiError::NotFound(format!("unknown transfer: {}", transfer_id)))?;
     if row.recipient != *recipient.as_str() {
-        return Err(ApiError::Unauthorized("recipient does not match transfer".into()));
+        return Err(ApiError::Unauthorized(
+            "recipient does not match transfer".into(),
+        ));
     }
     if row.state != "ready_for_pickup" {
         return Err(ApiError::BadRequest(format!(
@@ -792,11 +806,14 @@ pub async fn issue_ticket(
         .ok_or_else(|| ApiError::Unauthorized("recipient not registered".into()))?;
 
     let pubkey_arr: [u8; 32] = rec_row.public_key.as_slice().try_into().map_err(|_| {
-        ApiError::Internal(Box::new(crate::error::SimpleError("pubkey length".to_string())))
+        ApiError::Internal(Box::new(crate::error::SimpleError(
+            "pubkey length".to_string(),
+        )))
     })?;
     let pubkey = ed25519_dalek::VerifyingKey::from_bytes(&pubkey_arr).map_err(|e| {
         ApiError::Internal(Box::new(crate::error::SimpleError(format!(
-            "pubkey parse: {}", e
+            "pubkey parse: {}",
+            e
         ))))
     })?;
     let sig_arr: [u8; 64] = sig_bytes.as_slice().try_into().unwrap();
@@ -818,7 +835,8 @@ pub async fn issue_ticket(
     )
     .map_err(|e| {
         ApiError::Internal(Box::new(crate::error::SimpleError(format!(
-            "canonicalisation: {}", e
+            "canonicalisation: {}",
+            e
         ))))
     })?;
 

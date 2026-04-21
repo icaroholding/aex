@@ -40,7 +40,13 @@ impl FileBlobStore {
         // char just in case; the id is already validated upstream.
         let safe: String = transfer_id
             .chars()
-            .map(|c| if c.is_ascii_alphanumeric() || c == '_' { c } else { '_' })
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            })
             .collect();
         self.root.join(safe)
     }

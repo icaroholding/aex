@@ -3,15 +3,13 @@ use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
 use ed25519_dalek::{
-    Signature as DalekSignature, Signer, SigningKey, Verifier, VerifyingKey,
-    PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH, SIGNATURE_LENGTH,
+    Signature as DalekSignature, Signer, SigningKey, Verifier, VerifyingKey, PUBLIC_KEY_LENGTH,
+    SECRET_KEY_LENGTH, SIGNATURE_LENGTH,
 };
 use rand::rngs::OsRng;
 use sha2::{Digest, Sha256};
 
-use aex_core::{
-    AgentId, Error, IdentityProvider, Result, Signature, SignatureAlgorithm,
-};
+use aex_core::{AgentId, Error, IdentityProvider, Result, Signature, SignatureAlgorithm};
 
 /// In-memory peer public-key registry.
 ///
@@ -63,11 +61,7 @@ pub struct SpizeNativeProvider {
 
 impl SpizeNativeProvider {
     /// Generate a fresh keypair with a new random secret.
-    pub fn generate(
-        org: &str,
-        name: &str,
-        peer_registry: Arc<PeerRegistry>,
-    ) -> Result<Self> {
+    pub fn generate(org: &str, name: &str, peer_registry: Arc<PeerRegistry>) -> Result<Self> {
         let signing_key = SigningKey::generate(&mut OsRng);
         Self::from_signing_key(org, name, signing_key, peer_registry)
     }
@@ -248,7 +242,10 @@ mod tests {
         let msg = b"hello";
         let mut sig = alice.sign(msg).await.unwrap();
         sig.bytes[0] ^= 0xff;
-        let err = bob.verify_peer(alice.agent_id(), msg, &sig).await.unwrap_err();
+        let err = bob
+            .verify_peer(alice.agent_id(), msg, &sig)
+            .await
+            .unwrap_err();
         assert!(matches!(err, Error::SignatureInvalid));
     }
 
@@ -259,7 +256,10 @@ mod tests {
         let bob = SpizeNativeProvider::generate("acme", "bob", reg.clone()).unwrap();
         // Alice is NOT registered
         let sig = alice.sign(b"hi").await.unwrap();
-        let err = bob.verify_peer(alice.agent_id(), b"hi", &sig).await.unwrap_err();
+        let err = bob
+            .verify_peer(alice.agent_id(), b"hi", &sig)
+            .await
+            .unwrap_err();
         assert!(matches!(err, Error::NotFound(_)));
     }
 
@@ -270,7 +270,10 @@ mod tests {
             algorithm: SignatureAlgorithm::EcdsaSecp256k1,
             bytes: vec![0u8; SIGNATURE_LENGTH],
         };
-        let err = bob.verify_peer(alice.agent_id(), b"hi", &wrong).await.unwrap_err();
+        let err = bob
+            .verify_peer(alice.agent_id(), b"hi", &wrong)
+            .await
+            .unwrap_err();
         assert!(matches!(err, Error::SignatureFormat(_)));
     }
 
@@ -281,7 +284,10 @@ mod tests {
             algorithm: SignatureAlgorithm::Ed25519,
             bytes: vec![0u8; 32], // too short
         };
-        let err = bob.verify_peer(alice.agent_id(), b"hi", &wrong).await.unwrap_err();
+        let err = bob
+            .verify_peer(alice.agent_id(), b"hi", &wrong)
+            .await
+            .unwrap_err();
         assert!(matches!(err, Error::SignatureFormat(_)));
     }
 
@@ -300,7 +306,8 @@ mod tests {
     fn deterministic_id_from_same_secret() {
         let reg = Arc::new(PeerRegistry::new());
         let secret = [7u8; SECRET_KEY_LENGTH];
-        let p1 = SpizeNativeProvider::from_secret_bytes("acme", "alice", secret, reg.clone()).unwrap();
+        let p1 =
+            SpizeNativeProvider::from_secret_bytes("acme", "alice", secret, reg.clone()).unwrap();
         let p2 = SpizeNativeProvider::from_secret_bytes("acme", "alice", secret, reg).unwrap();
         assert_eq!(p1.agent_id(), p2.agent_id());
         assert_eq!(p1.public_key_bytes(), p2.public_key_bytes());
@@ -309,8 +316,16 @@ mod tests {
     #[test]
     fn different_secrets_yield_different_ids() {
         let reg = Arc::new(PeerRegistry::new());
-        let a = SpizeNativeProvider::from_secret_bytes("acme", "alice", [1u8; SECRET_KEY_LENGTH], reg.clone()).unwrap();
-        let b = SpizeNativeProvider::from_secret_bytes("acme", "alice", [2u8; SECRET_KEY_LENGTH], reg).unwrap();
+        let a = SpizeNativeProvider::from_secret_bytes(
+            "acme",
+            "alice",
+            [1u8; SECRET_KEY_LENGTH],
+            reg.clone(),
+        )
+        .unwrap();
+        let b =
+            SpizeNativeProvider::from_secret_bytes("acme", "alice", [2u8; SECRET_KEY_LENGTH], reg)
+                .unwrap();
         assert_ne!(a.agent_id(), b.agent_id());
     }
 
@@ -346,7 +361,8 @@ mod tests {
         let reg = Arc::new(PeerRegistry::new());
         let agents: Vec<SpizeNativeProvider> = (0..10)
             .map(|i| {
-                let p = SpizeNativeProvider::generate("acme", &format!("agent-{}", i), reg.clone()).unwrap();
+                let p = SpizeNativeProvider::generate("acme", &format!("agent-{}", i), reg.clone())
+                    .unwrap();
                 reg.register(p.agent_id().clone(), p.verifying_key());
                 p
             })
