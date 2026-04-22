@@ -58,6 +58,10 @@ uuid = { workspace = true }
 # The AEX DoH resolver + TLS config are supplied by `aex-net`.
 reqwest = { workspace = true }
 
+# Futures combinators — `join_all` for parallel endpoint probing in the
+# Sprint 2 endpoint validator.
+futures.workspace = true
+
 [dev-dependencies]
 rand.workspace = true
 tower = { workspace = true, features = ["util"] }

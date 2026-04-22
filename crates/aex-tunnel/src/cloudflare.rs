@@ -22,7 +22,7 @@ use crate::{
 
 const URL_TIMEOUT: Duration = Duration::from_secs(30);
 
-const CANDIDATE_PATHS: &[&str] = &[
+pub(crate) const CANDIDATE_PATHS: &[&str] = &[
     "cloudflared",
     "/opt/homebrew/bin/cloudflared",
     "/usr/local/bin/cloudflared",

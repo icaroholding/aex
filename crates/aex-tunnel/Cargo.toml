@@ -10,6 +10,7 @@ repository.workspace = true
 aex-core = { path = "../aex-core" }
 async-trait.workspace = true
 iroh.workspace = true
+reqwest = { workspace = true }
 serde = { workspace = true }
 thiserror.workspace = true
 tokio = { workspace = true }
