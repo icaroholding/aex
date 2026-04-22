@@ -102,7 +102,15 @@ pub struct CreateTransferRequest {
     /// Mutually exclusive with blob_hex.
     #[serde(default)]
     pub tunnel_url: Option<String>,
-    /// M2: sender-declared total size in bytes.
+    /// Sprint 2: transport plurality. A sender-ranked list of endpoints
+    /// the recipient should try in priority order (ADR-0012). Mutually
+    /// exclusive with both `blob_hex` and `tunnel_url`. The control
+    /// plane probes each entry in parallel under a 50-permit semaphore
+    /// and a 15s total budget (ADR-0014 + ADR-0033); at least one
+    /// endpoint must be healthy or the transfer is rejected.
+    #[serde(default)]
+    pub reachable_at: Option<Vec<aex_core::Endpoint>>,
+    /// M2 / Sprint 2: sender-declared total size in bytes.
     #[serde(default)]
     pub declared_size: Option<u64>,
 }
@@ -149,6 +157,122 @@ async fn create_transfer(
         return Err(ApiError::BadRequest(
             "issued_at outside allowed skew".into(),
         ));
+    }
+
+    // ---- Sprint 2 branch: sender declares multiple transports ----
+    if let Some(endpoints) = req.reachable_at.as_ref() {
+        if endpoints.is_empty() {
+            return Err(ApiError::BadRequest(
+                "reachable_at[] must contain at least one endpoint".into(),
+            ));
+        }
+        if !req.blob_hex.is_empty() {
+            return Err(ApiError::BadRequest(
+                "blob_hex and reachable_at are mutually exclusive".into(),
+            ));
+        }
+        if req.tunnel_url.is_some() {
+            return Err(ApiError::BadRequest(
+                "tunnel_url and reachable_at are mutually exclusive".into(),
+            ));
+        }
+        let declared_size = req.declared_size.ok_or_else(|| {
+            ApiError::BadRequest("declared_size is required when reachable_at is set".into())
+        })?;
+
+        // Validate every endpoint in parallel under the process-wide
+        // semaphore (ADR-0014 / ADR-0033). At-least-1-healthy is the
+        // acceptance invariant; failed endpoints are dropped from the
+        // stored list so the recipient never sees a known-dead address.
+        let report = state.endpoint_validator.validate_all(endpoints).await;
+        if !report.at_least_one_healthy() {
+            let first_err = report
+                .results
+                .iter()
+                .find_map(|r| r.error.clone())
+                .unwrap_or_else(|| "no endpoints reachable".into());
+            return Err(ApiError::BadRequest(format!(
+                "all reachable_at endpoints failed validation ({} entries). First error: {}",
+                endpoints.len(),
+                first_err
+            )));
+        }
+        let healthy = report.healthy_endpoints(endpoints);
+
+        // Verify sender intent signature.
+        let canonical = transfer_intent_bytes(
+            sender.as_str(),
+            &req.recipient,
+            declared_size,
+            &req.declared_mime,
+            &req.filename,
+            &req.nonce,
+            req.issued_at,
+        )
+        .map_err(|e| ApiError::BadRequest(format!("cannot build intent: {}", e)))?;
+        let sig_bytes = hex::decode(&req.intent_signature_hex)
+            .map_err(|e| ApiError::BadRequest(format!("intent_signature_hex: {}", e)))?;
+        if sig_bytes.len() != SIGNATURE_LEN {
+            return Err(ApiError::BadRequest("signature must be 64 bytes".into()));
+        }
+        let vk = verifying_key_from_pubkey_bytes(&sender_row.public_key)?;
+        let sig_arr: [u8; SIGNATURE_LEN] = sig_bytes.as_slice().try_into().expect("length checked");
+        vk.verify(&canonical, &DalekSignature::from_bytes(&sig_arr))
+            .map_err(|_| ApiError::Unauthorized("sender intent signature invalid".into()))?;
+
+        // Consume intent nonce (replay protection).
+        tx_db::consume_intent_nonce(&state.db, sender.as_str(), &req.nonce)
+            .await
+            .map_err(|e| match e {
+                sqlx::Error::Database(d)
+                    if d.constraint() == Some("transfer_intent_nonces_pkey") =>
+                {
+                    ApiError::Conflict("intent nonce already used".into())
+                }
+                other => ApiError::from(other),
+            })?;
+
+        let transfer_id = format!("tx_{}", hex::encode(rand::random::<[u8; 16]>()));
+        let recipient_kind = classify_recipient(&req.recipient);
+
+        // Backward-compat: pick the highest-priority HTTPS endpoint as
+        // the legacy `tunnel_url` so SDKs that haven't yet learned
+        // `reachable_at[]` still see something dialable. Iroh-only peers
+        // get NULL here; that's fine — they SHOULD be on the newer SDK.
+        let legacy_tunnel_url: Option<String> = healthy
+            .iter()
+            .find(|e| e.url.starts_with("https://"))
+            .map(|e| e.url.clone());
+
+        let reachable_at_json = serde_json::to_value(&healthy).map_err(|e| {
+            ApiError::Internal(Box::new(crate::error::SimpleError(format!(
+                "reachable_at serialize: {e}"
+            ))))
+        })?;
+
+        let row = tx_db::insert(
+            &state.db,
+            tx_db::InsertTransfer {
+                transfer_id: &transfer_id,
+                sender_agent_id: sender.as_str(),
+                recipient: &req.recipient,
+                recipient_kind: recipient_kind_str(recipient_kind),
+                state: "ready_for_pickup",
+                size_bytes: declared_size as i64,
+                declared_mime: opt_str(&req.declared_mime),
+                filename: opt_str(&req.filename),
+                blob_sha256: None,
+                scanner_verdict: None,
+                policy_decision: None,
+                rejection_code: None,
+                rejection_reason: None,
+                tunnel_url: legacy_tunnel_url.as_deref(),
+                reachable_at: Some(reachable_at_json),
+            },
+        )
+        .await?;
+
+        return Ok((StatusCode::CREATED, Json(row_to_response(row))));
     }
 
     // ---- M2 branch: sender serves bytes via Cloudflare tunnel ----

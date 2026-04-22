@@ -10,6 +10,7 @@ from typing import Any, Optional
 import json
 import httpx
 
+from aex_sdk.endpoint import Endpoint
 from aex_sdk.errors import SpizeError, SpizeHTTPError
 from aex_sdk.identity import Identity, random_nonce
 from aex_sdk.resolver import CloudflareDoHResolver, build_http_client
@@ -219,6 +220,58 @@ class SpizeClient:
             "intent_signature_hex": sig.hex(),
             "blob_hex": "",
             "tunnel_url": tunnel_url,
+            "declared_size": declared_size,
+        }
+        r = self._http.post("/v1/transfers", json=payload)
+        self._raise_for_status(r)
+        return TransferResponse.from_json(r.json())
+
+    def send_via_transports(
+        self,
+        *,
+        recipient: str,
+        declared_size: int,
+        declared_mime: str,
+        filename: str,
+        endpoints: list[Endpoint],
+    ) -> TransferResponse:
+        """Sprint 2 (wire v1.3.0-beta.1): announce a transfer with a
+        sender-ranked list of transport endpoints (`reachable_at[]`).
+
+        The control plane probes every endpoint in parallel under a
+        50-permit semaphore + 15s budget and requires at-least-1
+        healthy. Unhealthy endpoints are dropped from the stored list
+        so the recipient never sees a known-dead address.
+
+        This is the forward path; :meth:`send_via_tunnel` is kept for
+        single-URL senders during the dual-wire grace period.
+        """
+        if not self.identity:
+            raise ValueError("client has no identity")
+        if not endpoints:
+            raise SpizeError("endpoints[] must not be empty")
+        nonce = random_nonce()
+        issued_at = int(time.time())
+        intent = transfer_intent_bytes(
+            sender_agent_id=self.identity.agent_id,
+            recipient=recipient,
+            size_bytes=declared_size,
+            declared_mime=declared_mime,
+            filename=filename,
+            nonce=nonce,
+            issued_at_unix=issued_at,
+        )
+        sig = self.identity.sign(intent)
+        payload = {
+            "sender_agent_id": self.identity.agent_id,
+            "recipient": recipient,
+            "declared_mime": declared_mime,
+            "filename": filename,
+            "nonce": nonce,
+            "issued_at": issued_at,
+            "intent_signature_hex": sig.hex(),
+            "blob_hex": "",
+            "reachable_at": [e.to_json() for e in endpoints],
             "declared_size": declared_size,
         }
         r = self._http.post("/v1/transfers", json=payload)

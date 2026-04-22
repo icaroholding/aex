@@ -44,3 +44,23 @@ export {
   type NetworkState,
   type DetectNetworkStateOptions,
 } from "./captive.js";
+export {
+  KIND_CLOUDFLARE_QUICK,
+  KIND_CLOUDFLARE_NAMED,
+  KIND_IROH,
+  KIND_TAILSCALE_FUNNEL,
+  KIND_FRP,
+  KNOWN_KINDS,
+  HTTP_KINDS,
+  endpointFromJson,
+  endpointToJson,
+  isKnownKind,
+  isHttpDialable,
+  sortByPriority,
+  succeeded,
+  tryEndpoints,
+  type Endpoint,
+  type EndpointJson,
+  type FallbackAttempt,
+  type FallbackResult,
+} from "./endpoint.js";

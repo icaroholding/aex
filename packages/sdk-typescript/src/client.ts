@@ -1,4 +1,5 @@
 import { hex, Identity, randomNonce } from "./identity.js";
+import { endpointToJson, type Endpoint } from "./endpoint.js";
 import { SpizeError, SpizeHttpError } from "./errors.js";
 import { CloudflareDoHResolver, buildDohFetch } from "./resolver.js";
 import {
@@ -296,6 +297,56 @@ export class SpizeClient {
       intent_signature_hex: hex.encode(sig),
       blob_hex: "",
       tunnel_url: args.tunnelUrl,
+      declared_size: args.declaredSize,
+    });
+    return fromTransferJson(body);
+  }
+
+  /**
+   * Sprint 2 (wire v1.3.0-beta.1): announce a transfer with a
+   * sender-ranked list of transport endpoints (`reachable_at[]`).
+   *
+   * The control plane probes every endpoint in parallel under a
+   * 50-permit semaphore + 15s budget and requires at-least-1 healthy.
+   * Unhealthy endpoints are dropped from the stored list so the
+   * recipient never sees a known-dead address.
+   *
+   * Use this instead of {@link sendViaTunnel} once the sender has
+   * multiple transports it can offer; {@link sendViaTunnel} is kept
+   * for the dual-wire grace period.
+   */
+  async sendViaTransports(args: {
+    recipient: string;
+    declaredSize: number;
+    declaredMime: string;
+    filename: string;
+    endpoints: readonly Endpoint[];
+  }): Promise<TransferResponse> {
+    if (args.endpoints.length === 0) {
+      throw new SpizeError("endpoints[] must not be empty");
+    }
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const nonce = randomNonce();
+    const canonical = transferIntentBytes({
+      senderAgentId: this.identity.agentId,
+      recipient: args.recipient,
+      sizeBytes: args.declaredSize,
+      declaredMime: args.declaredMime,
+      filename: args.filename,
+      nonce,
+      issuedAtUnix: issuedAt,
+    });
+    const sig = await this.identity.sign(canonical);
+    const body = await this.postJson<any>("/v1/transfers", {
+      sender_agent_id: this.identity.agentId,
+      recipient: args.recipient,
+      declared_mime: args.declaredMime,
+      filename: args.filename,
+      nonce,
+      issued_at: issuedAt,
+      intent_signature_hex: hex.encode(sig),
+      blob_hex: "",
+      reachable_at: args.endpoints.map(endpointToJson),
       declared_size: args.declaredSize,
     });
     return fromTransferJson(body);

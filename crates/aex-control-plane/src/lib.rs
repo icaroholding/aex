@@ -12,6 +12,7 @@
 pub mod blob;
 pub mod config;
 pub mod db;
+pub mod endpoint_validator;
 pub mod error;
 pub mod routes;
 pub mod signer;
@@ -31,6 +32,7 @@ use aex_policy::PolicyEngine;
 use aex_scanner::ScanPipeline;
 
 use crate::blob::BlobStore;
+use crate::endpoint_validator::EndpointValidator;
 
 /// Application state shared across all request handlers.
 #[derive(Clone)]
@@ -41,6 +43,7 @@ pub struct AppState {
     pub audit: Arc<dyn AuditLog>,
     pub blobs: Arc<dyn BlobStore>,
     pub signer: Option<Arc<signer::ControlPlaneSigner>>,
+    pub endpoint_validator: EndpointValidator,
 }
 
 impl AppState {
@@ -58,11 +61,18 @@ impl AppState {
             audit,
             blobs,
             signer: None,
+            endpoint_validator: EndpointValidator::with_defaults(),
         }
     }
 
     pub fn with_signer(mut self, signer: Arc<signer::ControlPlaneSigner>) -> Self {
         self.signer = Some(signer);
+        self
+    }
+
+    /// Override the endpoint validator (tests use shorter budgets / smaller pools).
+    pub fn with_endpoint_validator(mut self, validator: EndpointValidator) -> Self {
+        self.endpoint_validator = validator;
         self
     }
 }

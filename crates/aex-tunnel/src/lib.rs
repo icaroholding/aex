@@ -6,6 +6,8 @@
 //!
 //! - [`CloudflareQuickTunnel`] — wraps `cloudflared tunnel --url …`.
 //!   Zero-config but ephemeral URL (regenerated on every restart).
+//! - [`NamedCloudflareTunnel`] — persistent hostname via a Cloudflare
+//!   named tunnel (operator-configured token + public URL).
 //! - [`IrohTunnel`] — QUIC peer-to-peer via iroh, with DERP relay
 //!   fallback. Added in Sprint 2 per ADR-0002 + ADR-0015.
 //! - [`StubTunnel`] — in-process no-op used by tests. Returns a fixed URL
@@ -17,11 +19,11 @@
 //! above).
 //!
 //! Later phases will add:
-//! - `NamedCloudflareTunnel` — persistent URL using named tunnels.
 //! - `TailscaleFunnelTunnel` — funnel URL via Tailscale.
 //! - `FrpTunnel` — self-hosted reverse proxy.
 
 pub mod cloudflare;
+pub mod cloudflare_named;
 pub mod error;
 pub mod iroh;
 pub mod orchestrator;
@@ -30,6 +32,7 @@ pub mod stub;
 mod url_parser;
 
 pub use cloudflare::CloudflareQuickTunnel;
+pub use cloudflare_named::NamedCloudflareTunnel;
 pub use error::{TunnelError, TunnelResult};
 pub use iroh::{IrohTunnel, IROH_ALPN};
 pub use orchestrator::{TransportEntry, TransportStartOutcome, TunnelOrchestrator};
