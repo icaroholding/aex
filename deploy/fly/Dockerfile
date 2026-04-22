@@ -23,7 +23,11 @@
 #     aex-control-plane:dev
 
 # ---------- builder ----------
-FROM rust:1.83-alpine AS builder
+# Rust 1.85+ required: the transitive `home` crate needs
+# edition2024, stabilised only in Rust 1.85. We pin the minor
+# version for reproducible builds — bump when a crate in the tree
+# raises MSRV further.
+FROM rust:1.90-alpine AS builder
 
 # Alpine's musl target is already the default when the toolchain is
 # rust:*-alpine. We still add it explicitly so an accidental bump to

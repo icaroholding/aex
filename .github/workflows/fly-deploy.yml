@@ -46,8 +46,14 @@ jobs:
       - name: Deploy to Fly.io
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        # Dockerfile path lives in fly.toml as `dockerfile = 'Dockerfile'`,
+        # resolved relative to the fly.toml's own directory
+        # (`deploy/fly/`). Passing --dockerfile here would also be
+        # resolved relative to fly.toml's dir — and with the value
+        # `deploy/fly/Dockerfile` it would compose to
+        # `deploy/fly/deploy/fly/Dockerfile`, which doesn't exist.
+        # See the 2026-04-22 debugging diary in the PR description.
         run: |
           flyctl deploy \
             --remote-only \
-            --config deploy/fly/fly.toml \
-            --dockerfile deploy/fly/Dockerfile
+            --config deploy/fly/fly.toml
