@@ -3,12 +3,14 @@
 //! Exposes a local port to the public internet via the operator's
 //! Tailscale node's Funnel hostname (`<node>.<tailnet>.ts.net`). The
 //! operator has already:
+//!
 //! - authenticated the node (`tailscale up`)
 //! - turned funnel on in the tailnet ACL
-//! and supplies the externally-visible URL at construction time. This
-//! provider orchestrates `tailscale funnel --bg <port>` to wire the
-//! local port to the funnel hostname and `tailscale funnel off` on
-//! stop to clean up.
+//!
+//! …and supplies the externally-visible URL at construction time.
+//! This provider orchestrates `tailscale funnel --bg <port>` to wire
+//! the local port to the funnel hostname and `tailscale funnel off`
+//! on stop to clean up.
 //!
 //! Tailscale's own `tailscaled` daemon owns the long-lived connection;
 //! the commands we run are short-lived state mutators. That's why we
