@@ -62,6 +62,7 @@ use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use sha2::Sha256;
+use sqlx::Acquire;
 use subtle::ConstantTimeEq;
 
 use crate::{
@@ -295,6 +296,7 @@ async fn process_event(
         "customer.created" | "customer.updated" => {
             handle_customer_upsert(&mut tx, &event.data.object).await?
         }
+        "customer.deleted" => handle_customer_deleted(&mut tx, &event.data.object).await?,
         "customer.subscription.created" | "customer.subscription.updated" => {
             handle_subscription_upsert(&mut tx, &event.data.object, price_dev, price_team).await?
         }
@@ -323,25 +325,103 @@ async fn handle_customer_upsert(
         );
         return Ok("skipped_malformed");
     }
-    match customers_db::upsert_in_tx(tx, stripe_customer_id, email).await {
+
+    // Wrap the upsert in a SAVEPOINT so a UNIQUE-violation on
+    // `customers.email` doesn't poison the outer transaction.
+    // Without this, the Postgres failure aborts the whole tx and
+    // the subsequent `mark_processed` fails with
+    // "current transaction is aborted, commands ignored…", and
+    // Stripe retries the event indefinitely.
+    let mut sp = tx.begin().await?;
+    let result = customers_db::upsert_in_tx(&mut sp, stripe_customer_id, email).await;
+    match result {
         Ok(_) => {
+            sp.commit().await?;
             tracing::info!(stripe_customer_id, email, "upserted customer email");
             Ok("upserted_customer")
         }
         Err(sqlx::Error::Database(e)) if e.is_unique_violation() => {
-            // Two distinct Stripe customer IDs claiming the same email
-            // — extremely rare, surfaces only after manual ops cleanup.
-            // Log loudly and skip rather than corrupting our `customers`
-            // row. Operator must reconcile in Stripe before we can sync.
+            // Two distinct Stripe customer IDs claiming the same
+            // email — happens after a `customer.deleted` we missed,
+            // or two test-mode customers Stripe sometimes generates.
+            // Roll back the savepoint so the outer transaction can
+            // still mark the event processed and Stripe stops
+            // retrying.
+            sp.rollback().await?;
             tracing::error!(
                 stripe_customer_id,
                 email,
-                "two stripe customers share the same email; skipping upsert"
+                "two stripe customers share the same email; skipping upsert. \
+                 If the colliding row is for a deleted Stripe customer, the \
+                 next `customer.deleted` event will clear it."
             );
             Ok("skipped_email_conflict")
         }
-        Err(e) => Err(e),
+        Err(e) => {
+            sp.rollback().await?;
+            Err(e)
+        }
     }
+}
+
+/// Handle a `customer.deleted` event. We hard-delete the row so
+/// the email becomes available again for new Stripe customers
+/// (otherwise a re-signup with the same email blocks on the
+/// `customers.email` UNIQUE constraint).
+///
+/// Cascade: we also revoke any api_keys the customer held, drop
+/// magic-link tokens (FK on `customers`), and remove the
+/// `subscriptions` row. All inside the outer transaction so the
+/// cleanup is atomic with the event-inbox bookkeeping.
+async fn handle_customer_deleted(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    obj: &JsonValue,
+) -> Result<&'static str, sqlx::Error> {
+    let stripe_customer_id = str_field(obj, "id");
+    if stripe_customer_id.is_empty() {
+        tracing::warn!("customer.deleted event missing id; skip");
+        return Ok("skipped_malformed");
+    }
+
+    // Order matters because of the FK from magic_link_tokens to
+    // customers — delete children before the parent.
+    let revoked_keys = keys_db::revoke_all_by_customer_in_tx(tx, stripe_customer_id).await?;
+
+    let tokens_deleted = sqlx::query("DELETE FROM magic_link_tokens WHERE stripe_customer_id = $1")
+        .bind(stripe_customer_id)
+        .execute(&mut **tx)
+        .await?
+        .rows_affected();
+
+    let subs_deleted = sqlx::query("DELETE FROM subscriptions WHERE stripe_customer_id = $1")
+        .bind(stripe_customer_id)
+        .execute(&mut **tx)
+        .await?
+        .rows_affected();
+
+    let customer_deleted = sqlx::query("DELETE FROM customers WHERE stripe_customer_id = $1")
+        .bind(stripe_customer_id)
+        .execute(&mut **tx)
+        .await?
+        .rows_affected();
+
+    tracing::info!(
+        stripe_customer_id,
+        revoked_keys,
+        tokens_deleted,
+        subs_deleted,
+        customer_deleted,
+        "processed customer.deleted: cleared customer + cascaded children"
+    );
+
+    // 200 even when nothing existed — Stripe replays customer.deleted
+    // events sometimes during account closure, and a no-op replay
+    // is correct behaviour.
+    Ok(if customer_deleted > 0 {
+        "deleted_customer"
+    } else {
+        "no_customer_row"
+    })
 }
 
 async fn handle_subscription_upsert(

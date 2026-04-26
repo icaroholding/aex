@@ -440,3 +440,191 @@ async fn unhandled_event_type_ack_200(pool: PgPool) {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(json["outcome"], "ignored");
 }
+
+// ------------------------- customer.deleted -------------------------
+
+#[sqlx::test]
+async fn customer_deleted_clears_customer_and_cascades(pool: PgPool) {
+    // Seed: a customer exists with an api_key, a magic-link token,
+    // and a subscription. After `customer.deleted`, all four
+    // table-level traces must be cleaned (customer row gone, key
+    // revoked, token row gone, subscription row gone).
+    let env = env(pool.clone());
+
+    // 1. Seed customer + subscription rows.
+    {
+        let mut tx = pool.begin().await.unwrap();
+        aex_control_plane::db::customers::upsert_in_tx(&mut tx, "cus_del", "del@example.com")
+            .await
+            .unwrap();
+        aex_control_plane::db::subscriptions::upsert_in_tx(
+            &mut tx, "cus_del", "sub_del", "dev", "active",
+        )
+        .await
+        .unwrap();
+        tx.commit().await.unwrap();
+    }
+    // 2. Mint an api_key + a magic-link token.
+    let admin_bearer = format!("Bearer {ADMIN_TOKEN}");
+    let req = Request::builder()
+        .method("POST")
+        .uri("/v1/admin/api-keys")
+        .header("authorization", &admin_bearer)
+        .header("content-type", "application/json")
+        .body(Body::from(
+            json!({"customer_id":"cus_del","name":"k","tier":"dev"}).to_string(),
+        ))
+        .unwrap();
+    let resp = env.app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    let now = time::OffsetDateTime::from_unix_timestamp(FROZEN_NOW).unwrap();
+    aex_control_plane::db::magic_link_tokens::create(
+        &pool,
+        "cus_del",
+        "del@example.com",
+        time::Duration::minutes(15),
+        now,
+    )
+    .await
+    .unwrap();
+
+    // 3. Send `customer.deleted` event.
+    let body = json!({
+        "id": "evt_del_1",
+        "type": "customer.deleted",
+        "data": { "object": { "id": "cus_del" } }
+    });
+    let bytes = serde_json::to_vec(&body).unwrap();
+    let sig = sign(WEBHOOK_SECRET, FROZEN_NOW, &bytes);
+    let (status, resp) = post_webhook(&env, &bytes, Some(&sig)).await;
+
+    assert_eq!(status, StatusCode::OK, "body = {resp}");
+    assert_eq!(resp["outcome"], "deleted_customer");
+
+    // 4. Verify cascade: customer + token + subscription rows gone.
+    let customer_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM customers WHERE stripe_customer_id = $1")
+            .bind("cus_del")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(customer_count.0, 0, "customer row must be deleted");
+
+    let token_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM magic_link_tokens WHERE stripe_customer_id = $1")
+            .bind("cus_del")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(token_count.0, 0, "magic_link_tokens must cascade");
+
+    let sub_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM subscriptions WHERE stripe_customer_id = $1")
+            .bind("cus_del")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(sub_count.0, 0, "subscription row must be deleted");
+
+    // 5. api_keys row stays (history) but is revoked.
+    let revoked_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM api_keys WHERE customer_id = $1 AND revoked_at IS NOT NULL",
+    )
+    .bind("cus_del")
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(revoked_count.0, 1, "api_key must be revoked, not deleted");
+}
+
+#[sqlx::test]
+async fn customer_deleted_for_unknown_id_returns_no_op(pool: PgPool) {
+    // Stripe occasionally replays `customer.deleted` for IDs we
+    // never saw — must ack 200 so retries stop.
+    let env = env(pool);
+    let body = json!({
+        "id": "evt_del_unknown",
+        "type": "customer.deleted",
+        "data": { "object": { "id": "cus_never_seen" } }
+    });
+    let bytes = serde_json::to_vec(&body).unwrap();
+    let sig = sign(WEBHOOK_SECRET, FROZEN_NOW, &bytes);
+    let (status, resp) = post_webhook(&env, &bytes, Some(&sig)).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(resp["outcome"], "no_customer_row");
+}
+
+// ------------------------- savepoint regression -------------------------
+
+#[sqlx::test]
+async fn email_collision_does_not_abort_outer_transaction(pool: PgPool) {
+    // Regression for the production bug where a UNIQUE-violation on
+    // `customers.email` aborted the whole event-processing
+    // transaction, so `mark_processed` failed with
+    // "current transaction is aborted, commands ignored…" and
+    // Stripe retried the event indefinitely.
+    //
+    // After the fix the savepoint absorbs the failure: the event
+    // is recorded as processed (no retries) and the customer row
+    // for the colliding email is left alone. Operator can fix the
+    // collision out-of-band.
+    let env = env(pool.clone());
+
+    // Seed a customer with the email the new event will collide on.
+    {
+        let mut tx = pool.begin().await.unwrap();
+        aex_control_plane::db::customers::upsert_in_tx(&mut tx, "cus_OLD", "shared@example.com")
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+    }
+
+    // Send `customer.created` for a DIFFERENT customer with the
+    // same email. The handler should detect the UNIQUE collision,
+    // roll back its savepoint, and still mark the event processed.
+    let body = json!({
+        "id": "evt_coll",
+        "type": "customer.created",
+        "data": { "object": { "id": "cus_NEW", "email": "shared@example.com" } }
+    });
+    let bytes = serde_json::to_vec(&body).unwrap();
+    let sig = sign(WEBHOOK_SECRET, FROZEN_NOW, &bytes);
+    let (status, resp) = post_webhook(&env, &bytes, Some(&sig)).await;
+
+    assert_eq!(status, StatusCode::OK, "body = {resp}");
+    assert_eq!(resp["outcome"], "skipped_email_conflict");
+
+    // CRITICAL: the event must be recorded as processed in the
+    // inbox. Pre-fix, this row's `processed_at` stayed null because
+    // the outer transaction was aborted before reaching
+    // `mark_processed`.
+    let processed: Option<(Option<time::OffsetDateTime>,)> =
+        sqlx::query_as("SELECT processed_at FROM stripe_events WHERE event_id = $1")
+            .bind("evt_coll")
+            .fetch_optional(&pool)
+            .await
+            .unwrap();
+    assert!(
+        processed.and_then(|(ts,)| ts).is_some(),
+        "event MUST be marked processed despite the email collision"
+    );
+
+    // The OLD customer row stays untouched.
+    let old_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM customers WHERE stripe_customer_id = $1")
+            .bind("cus_OLD")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(old_count.0, 1);
+
+    // The NEW customer row is NOT created.
+    let new_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM customers WHERE stripe_customer_id = $1")
+            .bind("cus_NEW")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(new_count.0, 0);
+}
