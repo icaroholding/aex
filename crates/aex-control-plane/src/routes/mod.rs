@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod agents;
+pub mod checkout;
 pub mod customer;
 pub mod health;
 pub mod inbox;
@@ -40,5 +41,9 @@ pub fn v1_router(state: AppState) -> Router<AppState> {
         .nest("/admin", admin)
         .nest("/metered", metered)
         .nest("/customer", customer)
+        // Public checkout endpoint — no auth, anonymous browsers
+        // hit it to create a Stripe Checkout Session for the
+        // /pricing page Subscribe buttons.
+        .nest("/checkout", checkout::router())
         .merge(inbox::router())
 }
