@@ -232,6 +232,11 @@ pub mod runbook {
             "stripe_signature_invalid" => Some(url("stripe-signature-invalid")),
             "stripe_event_malformed" => Some(url("stripe-event-malformed")),
             "stripe_processing_failed" => Some(url("stripe-processing-failed")),
+            // Outbound Stripe API failures (Checkout, Customer
+            // Portal). Distinct from webhook failures because the
+            // missing config is `STRIPE_SECRET_KEY`, not
+            // `STRIPE_WEBHOOK_SECRET`.
+            "checkout_disabled" => Some(url("checkout-disabled")),
             _ => None,
         }
     }
@@ -330,6 +335,12 @@ pub mod runbook {
                     "unauthorized.md"
                 )
             }
+            "checkout-disabled" => {
+                concat!(
+                    "https://github.com/icaroholding/aex/blob/master/docs/runbooks/",
+                    "checkout-disabled.md"
+                )
+            }
             "magic-link-invalid" => {
                 concat!(
                     "https://github.com/icaroholding/aex/blob/master/docs/runbooks/",
@@ -404,6 +415,7 @@ pub mod runbook {
         "agent-not-registered-or-revoked",
         "api-key-invalid",
         "api-key-missing",
+        "checkout-disabled",
         "clock-skew",
         "conflict",
         "endpoint-unreachable",

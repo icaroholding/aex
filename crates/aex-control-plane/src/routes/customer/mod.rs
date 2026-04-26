@@ -18,6 +18,7 @@
 
 pub mod api_keys;
 pub mod auth;
+pub mod subscription;
 
 use axum::{middleware, Router};
 
@@ -30,6 +31,7 @@ pub fn router(state: AppState) -> Router<AppState> {
     let authed = Router::new()
         .merge(auth::authed_router())
         .merge(api_keys::router())
+        .merge(subscription::router())
         .route_layer(middleware::from_fn_with_state(
             state,
             auth::require_customer_session,

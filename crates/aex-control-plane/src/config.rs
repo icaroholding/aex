@@ -113,6 +113,12 @@ pub struct StripeConfig {
     pub price_dev: Option<String>,
     /// Same as above for the `team` tier (e.g. `$99/month`).
     pub price_team: Option<String>,
+    /// Stripe API secret key (`sk_test_…` or `sk_live_…`). Required
+    /// for any **outgoing** call to Stripe — Checkout Session
+    /// creation, Customer Portal session creation, etc. Webhook
+    /// signature verification does NOT need it (uses `webhook_secret`
+    /// instead). When `None`, the checkout endpoint returns 503.
+    pub secret_key: Option<String>,
 }
 
 impl StripeConfig {
@@ -121,6 +127,14 @@ impl StripeConfig {
     /// or on a forgotten-secret deploy.
     pub fn is_ready(&self) -> bool {
         self.webhook_secret.is_some() && self.price_dev.is_some() && self.price_team.is_some()
+    }
+
+    /// True iff the **outgoing** Stripe API surface is configured —
+    /// i.e. `secret_key` is set. The webhook can be ready without
+    /// `secret_key` (it only needs the webhook signing secret), so
+    /// these are tracked separately.
+    pub fn checkout_ready(&self) -> bool {
+        self.secret_key.is_some() && self.price_dev.is_some() && self.price_team.is_some()
     }
 }
 
@@ -195,6 +209,7 @@ impl Config {
                 .filter(|v| !v.is_empty()),
             price_dev: env::var("STRIPE_PRICE_DEV").ok().filter(|v| !v.is_empty()),
             price_team: env::var("STRIPE_PRICE_TEAM").ok().filter(|v| !v.is_empty()),
+            secret_key: env::var("STRIPE_SECRET_KEY").ok().filter(|v| !v.is_empty()),
         };
         if !stripe.is_ready() {
             tracing::warn!(

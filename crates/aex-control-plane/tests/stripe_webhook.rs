@@ -48,6 +48,7 @@ fn env(pool: PgPool) -> TestEnv {
                 webhook_secret: Some(WEBHOOK_SECRET.into()),
                 price_dev: Some(PRICE_DEV.into()),
                 price_team: Some(PRICE_TEAM.into()),
+                secret_key: None,
             })
             .with_clock(Arc::new(FrozenClock::new(FROZEN_NOW)))
     })

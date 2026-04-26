@@ -21,6 +21,7 @@ pub mod metrics;
 pub mod routes;
 pub mod session;
 pub mod signer;
+pub mod stripe;
 pub mod verify;
 
 use axum::http::{header, HeaderValue, Method};
