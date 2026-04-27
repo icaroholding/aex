@@ -32,7 +32,7 @@ axum.workspace = true
 # axum-extra::extract::cookie::CookieJar for the customer dashboard
 # session cookie. The `cookie` feature pulls in the parser; we set
 # the cookie attributes manually (Domain, SameSite, Secure, HttpOnly).
-axum-extra = { version = "0.9", features = ["cookie"] }
+axum-extra = { version = "0.12", features = ["cookie"] }
 tower.workspace = true
 tower-http = { workspace = true, features = ["trace", "limit", "timeout", "cors"] }
 
