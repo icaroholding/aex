@@ -60,7 +60,7 @@ hmac = "0.12"
 # roll our own with the existing hmac+sha2 deps but jsonwebtoken
 # handles claims serialization, leeway, and standard JWT errors —
 # the discipline cost of a small crate is worth the consistency.
-jsonwebtoken = "9"
+jsonwebtoken = "10"
 # URL parsing for the cookie-domain check on the customer-auth
 # config. We need exact host matching (not `starts_with`) to keep
 # `https://spize.io.evil.com` from being treated as a `spize.io`
