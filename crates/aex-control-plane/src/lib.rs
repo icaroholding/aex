@@ -151,8 +151,8 @@ pub fn build_cors_layer(allowed: &[String]) -> CorsLayer {
         );
         return CorsLayer::new()
             .allow_origin(AllowOrigin::any())
-            .allow_methods([Method::GET, Method::POST])
-            .allow_headers([header::CONTENT_TYPE]);
+            .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH])
+            .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
     }
     let origins: Vec<HeaderValue> = allowed
         .iter()
@@ -160,10 +160,15 @@ pub fn build_cors_layer(allowed: &[String]) -> CorsLayer {
         .collect();
     CorsLayer::new()
         .allow_origin(origins)
-        .allow_methods([Method::GET, Method::POST])
-        .allow_headers([header::CONTENT_TYPE])
-        // The dashboard (spize.io → api.spize.io) needs the cookie
-        // cross-subdomain. See module-level comment above.
+        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH])
+        // `Authorization` is required by the customer dashboard which signs every
+        // request with `Authorization: Bearer <supabase_jwt>` since the Sprint-5
+        // Supabase migration. Without it the browser blocks the preflight and
+        // every dashboard fetch fails with `TypeError: Failed to fetch`.
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+        // The dashboard at spize.io → api.spize.io used to need the session
+        // cookie cross-subdomain; with Bearer auth the cookie is no longer
+        // used, but we keep credentials enabled for any legacy or future flows.
         .allow_credentials(true)
 }
 
