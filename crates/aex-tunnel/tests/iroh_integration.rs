@@ -23,7 +23,7 @@
 use std::time::Duration;
 
 use aex_tunnel::{IrohTunnel, TunnelProvider, TunnelStatus, IROH_ALPN};
-use iroh::{Endpoint as IrohEndpoint, SecretKey};
+use iroh::{endpoint::presets::N0, Endpoint as IrohEndpoint, SecretKey};
 use tokio::net::TcpListener;
 use tokio::time::timeout;
 
@@ -86,8 +86,10 @@ async fn two_peers_echo_over_iroh() {
         .expect("iroh endpoint present after start")
         .addr();
 
-    // Peer B: plain iroh endpoint, no tunnel, just a client.
-    let endpoint_b = IrohEndpoint::builder()
+    // Peer B: plain iroh endpoint, no tunnel, just a client. Pass the
+    // same N0 preset IrohTunnel uses so both peers share the same DNS
+    // publisher + relay defaults.
+    let endpoint_b = IrohEndpoint::builder(N0)
         .alpns(vec![IROH_ALPN.to_vec()])
         .bind()
         .await
