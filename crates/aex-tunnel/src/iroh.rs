@@ -28,7 +28,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use iroh::{Endpoint as IrohEndpoint, SecretKey, endpoint::presets::N0};
+use iroh::{endpoint::presets::N0, Endpoint as IrohEndpoint, SecretKey};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::task::JoinHandle;
