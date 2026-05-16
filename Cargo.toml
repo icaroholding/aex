@@ -15,7 +15,7 @@ members = [
 
 [workspace.package]
 edition = "2021"
-version = "1.3.0-beta.3"
+version = "1.3.0-beta.4"
 license = "Apache-2.0"
 repository = "https://github.com/icaroholding/aex"
 homepage = "https://spize.io"
@@ -66,8 +66,10 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 hickory-resolver = { version = "0.24", default-features = false, features = ["tokio-runtime"] }
 url = "2"
 
-# Iroh P2P transport (pinned per ADR-0015; bumps require a new ADR).
-iroh = "=0.96.0"
+# Iroh direct transport (pinned per ADR-0015; bumps require a new ADR).
+# 0.98 is the first line whose iroh-base transitively requires
+# `ed25519-dalek =3.0.0-pre.6` instead of the broken `=3.0.0-pre.1`.
+iroh = "=0.98.2"
 
 # Property-based testing (Sprint 3). Dev-only across the workspace;
 # proptest is intentionally NOT in any runtime dependency list.

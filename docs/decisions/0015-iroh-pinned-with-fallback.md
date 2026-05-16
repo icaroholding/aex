@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted 2026-04-21.
+Accepted 2026-04-21. The exact pin moved from `=0.96.0` to `=0.98.2` on
+2026-05-16 — see ADR-0039 for the rationale (upstream `ed25519-dalek`
+prerelease defect). The abstraction-and-fallback policy described
+below is unchanged.
 
 ## Context
 
