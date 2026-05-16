@@ -15,7 +15,14 @@ kill_timeout = '30s'
 
 [env]
   BIND_ADDR = '0.0.0.0:8080'
-  CORS_ALLOWED_ORIGINS = 'https://spize.io'
+  # Origins permitted to call this control plane. The web dashboard at
+  # spize.io is the historic caller; the desktop app's Tauri WebView
+  # uses `tauri://localhost` in production builds on macOS/Linux,
+  # `https://tauri.localhost` on Windows, and `http://localhost:1420`
+  # while running under `tauri dev`. The control-plane code parses this
+  # as a comma-separated list (see aex-control-plane::build_cors_layer)
+  # so anyone self-hosting AEX can swap these for their own origins.
+  CORS_ALLOWED_ORIGINS = 'https://spize.io,tauri://localhost,https://tauri.localhost,http://localhost:1420'
   LOG_FORMAT = 'json'
   RUST_LOG = 'info,aex_control_plane=info,sqlx=warn'
 
