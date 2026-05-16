@@ -67,7 +67,7 @@ and what follow-up work it implies.
 | [0012](0012-transport-negotiation-sender-ranked-serial-sticky.md) | Sender-ranked, serial-fallback, sticky transport negotiation |
 | [0013](0013-reachable-at-jsonb-column.md)       | `reachable_at[]` stored as a JSONB column, not a normalized table |
 | [0014](0014-transport-validation-budget.md)     | Transport validation: at-least-1-healthy + 15 s budget + periodic re-validation |
-| [0015](0015-iroh-pinned-with-fallback.md)       | Iroh pinned to `=0.96.0`, behind abstraction, with runtime fallback |
+| [0015](0015-iroh-pinned-with-fallback.md)       | Iroh exact-pin + abstraction + runtime fallback (current pin `=0.98.2`, see ADR-0039) |
 | [0016](0016-single-region-ams-derp.md)          | Single-region DERP (AMS), metric-gated expansion |
 | [0017](0017-captive-portal-shared-crate.md)     | Captive-portal detection in a shared crate; multi-endpoint consensus; soft-warn |
 | [0018](0018-wire-v1-frozen-capability-bits-v2-phase-6.md) | Wire v1 frozen; capability bits in Agent Card; v2 RFC at Phase 6 |
@@ -135,3 +135,10 @@ and what follow-up work it implies.
 | #    | Title |
 |------|-------|
 | [0037](0037-bcp-contributor-onramp-adr-log.md)  | Business continuity plan + contributor onramp + ADR log |
+
+### Maintenance
+
+| #    | Title |
+|------|-------|
+| [0038](0038-recipient-side-fallback-needs-multi-url-ticket.md) | Recipient-side transport fallback needs multi-URL tickets (deferred) |
+| [0039](0039-iroh-bump-to-0.98.2.md)             | Bump Iroh `=0.96.0` → `=0.98.2` (upstream ed25519-dalek prerelease defect) |

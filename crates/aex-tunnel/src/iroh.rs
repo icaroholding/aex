@@ -1,9 +1,10 @@
 //! Iroh peer-to-peer tunnel provider.
 //!
-//! Per ADR-0002 Iroh is a first-class AEX transport. Per ADR-0015 it's
-//! pinned to `=0.96.0` and every `iroh::*` type stays behind this
-//! [`TunnelProvider`] impl so nothing else in the protocol depends on
-//! Iroh's API surface.
+//! Per ADR-0002 Iroh is a first-class AEX transport. Per ADR-0015 / ADR-0039
+//! it's pinned to `=0.98.2` (bumped from `=0.96.0` to dodge an upstream
+//! `ed25519-dalek` prerelease defect) and every `iroh::*` type stays
+//! behind this [`TunnelProvider`] impl so nothing else in the protocol
+//! depends on Iroh's API surface.
 //!
 //! The "public URL" returned by [`IrohTunnel::public_url`] is not an
 //! HTTP URL — it's the AEX-specific identifier
@@ -27,7 +28,7 @@
 use std::time::Duration;
 
 use async_trait::async_trait;
-use iroh::{Endpoint as IrohEndpoint, SecretKey};
+use iroh::{Endpoint as IrohEndpoint, SecretKey, endpoint::presets::N0};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 use tokio::task::JoinHandle;
@@ -139,7 +140,9 @@ impl TunnelProvider for IrohTunnel {
 
         self.status = TunnelStatus::Connecting;
 
-        let mut builder = IrohEndpoint::builder().alpns(vec![self.alpn.clone()]);
+        // Iroh 0.98 requires an explicit Preset on Endpoint::builder. `N0`
+        // matches the 0.96 default: n0.computer relay + DNS publishing.
+        let mut builder = IrohEndpoint::builder(N0).alpns(vec![self.alpn.clone()]);
         if let Some(sk) = self.secret_key.clone() {
             builder = builder.secret_key(sk);
         }
