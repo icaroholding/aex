@@ -35,4 +35,16 @@ DATABASE_URL=postgres://aex:aex_dev@localhost:5432/aex cargo test --workspace
 
 ## Identity format
 
-Wire format keeps `spize:org/name:fingerprint` as the identity namespace. The protocol rename to AEX is a package-level branding change — the identity prefix, tool names, and canonical message prefixes are held stable for compatibility.
+Two identity-format lines coexist during the v1→v2 grace window
+(ADR-0043):
+
+- **Wire v1 (legacy)**: `spize:org/name:fingerprint`. Held stable for the
+  duration of the 6-month grace window per ADR-0043. Still produced by
+  `aex_core::wire::*_bytes` functions (prefix `spize-*:v1`).
+- **Wire v2**: W3C DID URI `did:method:method-specific-id[#fragment]`
+  (ADR-0041). Produced by `aex_core::wire_v2::*_bytes_v2` (prefix
+  `aex-*:v2`). Methods supported at GA: `did:spize`, `did:web`, `did:ethr`,
+  `did:key` (ADR-0047).
+
+The wire-format prefix is no longer brand-tied — ADR-0042 supersedes
+the previous "held stable for compatibility" stance.

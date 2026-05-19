@@ -142,3 +142,17 @@ and what follow-up work it implies.
 |------|-------|
 | [0038](0038-recipient-side-fallback-needs-multi-url-ticket.md) | Recipient-side transport fallback needs multi-URL tickets (deferred) |
 | [0039](0039-iroh-bump-to-0.98.2.md)             | Bump Iroh `=0.96.0` → `=0.98.2` (upstream ed25519-dalek prerelease defect) |
+
+### v2 protocol (Q3 2026, supersedes ADR-0018 timeline)
+
+| #    | Title |
+|------|-------|
+| [0040](0040-etere-citizen-trust-scoring-first-class.md) | EtereCitizen (`did:ethr`) promoted to first-class trust-scoring layer in v2 |
+| [0041](0041-agent-id-w3c-did-uri.md)             | `AgentId` v2 follows W3C DID Core §3.1 |
+| [0042](0042-wire-v2-brand-neutral-prefix.md)     | Wire v2 — brand-neutral `aex-*:v2` prefix; sender carries its own namespace |
+| [0043](0043-capability-negotiation-dual-wire.md) | Capability negotiation v1↔v2; 6-month dual-wire grace |
+| [0044](0044-clock-skew-60s-rfc-7519.md)          | Clock skew window 60 s (RFC 7519 §4.1.4 compliant) |
+| [0045](0045-aex-net-safe-http-ssrf.md)           | `aex-net::safe_http` — SSRF-resistant fetcher for the resolver chain |
+| [0046](0046-card-cache-1h-etag-events.md)        | Agent card cache — 1 h TTL + ETag + event-driven invalidation |
+| [0047](0047-v2-providers-spize-web-ethr-key.md)  | v2.0 GA ships four DID providers: `did:spize`, `did:web`, `did:ethr`, `did:key` |
+| [0048](0048-conformance-suite-apache-2.md)       | `aex-conformance` suite is Apache-2.0 open binary; badge URL pattern |

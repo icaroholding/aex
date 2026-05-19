@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted 2026-04-21.
+Accepted 2026-04-21. **Superseded by ADR-0042 (2026-05-19)** — v2 RFC
+moved from Q1 2027 to Q3 2026 in response to external standards
+convergence (Google A2A v1.0 GA, NIST AI Agent Standards Initiative,
+GoDaddy/Infoblox ANS announcement). The capability-bits mechanism
+described below remains in force; the v2 timeline does not.
 
 ## Context
 
