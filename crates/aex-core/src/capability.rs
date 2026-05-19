@@ -230,7 +230,10 @@ mod tests {
         assert_eq!(Capability::JwsAgentCard.as_str(), "jws-agent-card");
         assert_eq!(Capability::CardEtag.as_str(), "card-etag");
         assert_eq!(Capability::A2ABridge.as_str(), "a2a-bridge");
-        assert_eq!(Capability::EtereCitizenTrust.as_str(), "etere-citizen-trust");
+        assert_eq!(
+            Capability::EtereCitizenTrust.as_str(),
+            "etere-citizen-trust"
+        );
         assert_eq!(Capability::SafeHttp.as_str(), "safe-http");
         assert_eq!(Capability::ClockSkew60s.as_str(), "clock-skew-60s");
         assert_eq!(Capability::StreamingTransfer.as_str(), "streaming-transfer");

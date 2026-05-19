@@ -109,19 +109,13 @@ proptest! {
 fn arb_safe_ascii(min_len: usize, max_len: usize) -> impl Strategy<Value = String> {
     // ASCII printables that are also valid in our canonical line format
     // (no LF, CR, NUL — those would corrupt framing).
-    proptest::string::string_regex(&format!(
-        r"[A-Za-z0-9._:/#=+-]{{{},{}}}",
-        min_len, max_len
-    ))
-    .unwrap()
+    proptest::string::string_regex(&format!(r"[A-Za-z0-9._:/#=+-]{{{},{}}}", min_len, max_len))
+        .unwrap()
 }
 
 fn arb_hex_nonce() -> impl Strategy<Value = String> {
-    proptest::string::string_regex(&format!(
-        r"[0-9a-f]{{{},{}}}",
-        MIN_NONCE_LEN, MAX_NONCE_LEN
-    ))
-    .unwrap()
+    proptest::string::string_regex(&format!(r"[0-9a-f]{{{},{}}}", MIN_NONCE_LEN, MAX_NONCE_LEN))
+        .unwrap()
 }
 
 proptest! {
@@ -269,13 +263,15 @@ fn arb_capability() -> impl Strategy<Value = Capability> {
 }
 
 fn arb_capability_set() -> impl Strategy<Value = CapabilitySet> {
-    proptest::collection::hash_set(arb_capability(), 0..Capability::ALL.len() + 1).prop_map(|caps| {
-        let mut s = CapabilitySet::empty();
-        for c in caps {
-            s = s.with(c);
-        }
-        s
-    })
+    proptest::collection::hash_set(arb_capability(), 0..Capability::ALL.len() + 1).prop_map(
+        |caps| {
+            let mut s = CapabilitySet::empty();
+            for c in caps {
+                s = s.with(c);
+            }
+            s
+        },
+    )
 }
 
 proptest! {

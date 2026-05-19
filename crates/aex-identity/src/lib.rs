@@ -22,6 +22,6 @@ pub use did_web::{AgentCardPayload, DidWebProvider, Endpoints, PublicKeyDeclarat
 pub use etere_citizen::{EtereCitizenProvider, EtereCitizenRegistry, ReputationFetcher};
 pub use native::{PeerRegistry, SpizeNativeProvider};
 pub use resolver_chain::{
-    AgentResolver, ResolvedAgent, ResolveOutcome, ResolverChain, ResolverError, DEFAULT_CAPACITY,
+    AgentResolver, ResolveOutcome, ResolvedAgent, ResolverChain, ResolverError, DEFAULT_CAPACITY,
     DEFAULT_TTL,
 };

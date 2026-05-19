@@ -391,8 +391,7 @@ mod tests {
 
     #[test]
     fn v2_newline_in_field_rejected() {
-        let err =
-            registration_challenge_bytes_v2("aa", "ac\nme", "alice", NONCE, 100).unwrap_err();
+        let err = registration_challenge_bytes_v2("aa", "ac\nme", "alice", NONCE, 100).unwrap_err();
         assert!(matches!(err, Error::Internal(_)));
     }
 
@@ -411,9 +410,8 @@ mod tests {
 
     #[test]
     fn v2_non_hex_nonce_rejected() {
-        let err =
-            registration_challenge_bytes_v2("aa", "acme", "alice", &"z".repeat(32), 100)
-                .unwrap_err();
+        let err = registration_challenge_bytes_v2("aa", "acme", "alice", &"z".repeat(32), 100)
+            .unwrap_err();
         assert!(matches!(err, Error::Internal(_)));
     }
 
@@ -433,14 +431,9 @@ mod tests {
 
     #[test]
     fn v2_receipt_rejects_bad_action() {
-        let err = transfer_receipt_bytes_v2(
-            "did:web:beta-corp.com#bob",
-            "tx_abc",
-            "overwrite",
-            NONCE,
-            1,
-        )
-        .unwrap_err();
+        let err =
+            transfer_receipt_bytes_v2("did:web:beta-corp.com#bob", "tx_abc", "overwrite", NONCE, 1)
+                .unwrap_err();
         assert!(matches!(err, Error::Internal(_)));
     }
 

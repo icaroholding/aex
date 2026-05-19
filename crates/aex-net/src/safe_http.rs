@@ -103,10 +103,7 @@ pub struct SafeHttpResponse {
 /// The `component_name` mirrors [`crate::http::build_http_client`]
 /// (`"control-plane"`, `"data-plane"`, `"sdk"`) and lands in the
 /// User-Agent header.
-pub async fn safe_get(
-    url: &str,
-    component_name: &str,
-) -> Result<SafeHttpResponse, SafeHttpError> {
+pub async fn safe_get(url: &str, component_name: &str) -> Result<SafeHttpResponse, SafeHttpError> {
     let parsed = Url::parse(url).map_err(|e| SafeHttpError::InvalidUrl(e.to_string()))?;
 
     // Scheme check FIRST so e.g. `file:///etc/passwd` surfaces as

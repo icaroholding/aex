@@ -137,7 +137,10 @@ fn cmd_debug_resolve(handle: &str) -> Result<(), String> {
     }
 
     let total = t_start.elapsed();
-    println!("→ done                          [total {} µs]", total.as_micros());
+    println!(
+        "→ done                          [total {} µs]",
+        total.as_micros()
+    );
     Ok(())
 }
 
@@ -170,13 +173,7 @@ mod tests {
 
     #[test]
     fn parses_top_level_args() {
-        let cli = Cli::try_parse_from([
-            "aex-cli",
-            "debug",
-            "resolve",
-            "did:key:zabc",
-        ])
-        .unwrap();
+        let cli = Cli::try_parse_from(["aex-cli", "debug", "resolve", "did:key:zabc"]).unwrap();
         match cli.command {
             Command::Debug(DebugCmd::Resolve { handle }) => {
                 assert_eq!(handle, "did:key:zabc")
@@ -187,8 +184,7 @@ mod tests {
 
     #[test]
     fn parses_qr_args() {
-        let cli =
-            Cli::try_parse_from(["aex-cli", "qr", "did:web:acme.com#fatture"]).unwrap();
+        let cli = Cli::try_parse_from(["aex-cli", "qr", "did:web:acme.com#fatture"]).unwrap();
         match cli.command {
             Command::Qr { handle } => assert_eq!(handle, "did:web:acme.com#fatture"),
             _ => panic!("wrong subcommand"),

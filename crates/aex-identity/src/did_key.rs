@@ -22,9 +22,7 @@
 
 use std::sync::Arc;
 
-use aex_core::{
-    AgentId, Error, IdScheme, IdentityProvider, Result, Signature, SignatureAlgorithm,
-};
+use aex_core::{AgentId, Error, IdScheme, IdentityProvider, Result, Signature, SignatureAlgorithm};
 use async_trait::async_trait;
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
 use tokio::sync::RwLock;
@@ -117,9 +115,8 @@ impl DidKeyProvider {
                 ED25519_MULTICODEC_PREFIX
             )));
         }
-        let pubkey_bytes: [u8; ED25519_PUBKEY_LEN] = bytes[2..]
-            .try_into()
-            .expect("length checked just above");
+        let pubkey_bytes: [u8; ED25519_PUBKEY_LEN] =
+            bytes[2..].try_into().expect("length checked just above");
         VerifyingKey::from_bytes(&pubkey_bytes)
             .map_err(|e| Error::InvalidAgentId(format!("invalid Ed25519 public key: {}", e)))
     }

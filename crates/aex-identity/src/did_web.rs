@@ -101,9 +101,7 @@ impl DidWebProvider {
         // we take only the first `:`-segment as the authority.
         let authority = uri.method_specific_id.split(':').next().unwrap_or("");
         if authority.is_empty() {
-            return Err(Error::InvalidAgentId(
-                "did:web authority is empty".into(),
-            ));
+            return Err(Error::InvalidAgentId("did:web authority is empty".into()));
         }
         // Defensive: reject schemes that snuck into the authority
         // (e.g. did:web:https://...) — they would let an attacker
@@ -412,10 +410,7 @@ mod tests {
             algorithm: SignatureAlgorithm::EcdsaSecp256k1,
             bytes: vec![0u8; 64],
         };
-        let err = p
-            .verify_peer(p.agent_id(), b"x", &bogus)
-            .await
-            .unwrap_err();
+        let err = p.verify_peer(p.agent_id(), b"x", &bogus).await.unwrap_err();
         assert!(matches!(err, Error::SignatureFormat(_)));
     }
 

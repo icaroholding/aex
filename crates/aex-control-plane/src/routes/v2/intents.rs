@@ -68,8 +68,7 @@ pub struct StubBody {
 async fn create_intent(Json(body): Json<IntentBody>) -> impl IntoResponse {
     let stub = StubBody {
         error: "not_implemented_yet",
-        message:
-            "POST /v2/intents is reserved for wire-v2 transfer verification \
+        message: "POST /v2/intents is reserved for wire-v2 transfer verification \
              but the verification pipeline is staged for the v2.0 GA \
              follow-up sprint. See the rollout runbook.",
         runbook: "https://aex.dev/runbooks/v2-intent-stub",
@@ -78,9 +77,7 @@ async fn create_intent(Json(body): Json<IntentBody>) -> impl IntoResponse {
     let mut headers = HeaderMap::new();
     headers.insert(
         header::LINK,
-        HeaderValue::from_static(
-            "<https://aex.dev/runbooks/v2-intent-stub>; rel=\"help\"",
-        ),
+        HeaderValue::from_static("<https://aex.dev/runbooks/v2-intent-stub>; rel=\"help\""),
     );
     (StatusCode::NOT_IMPLEMENTED, headers, Json(stub))
 }

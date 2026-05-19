@@ -260,12 +260,10 @@ async fn test_wire_v1_still_functional() -> Result<(), String> {
 }
 
 async fn test_cross_version_isolation() -> Result<(), String> {
-    let v1 =
-        wire::registration_challenge_bytes("aa", "acme", "alice", NONCE, 1_700_000_000)
-            .map_err(|e| e.to_string())?;
-    let v2 =
-        wire_v2::registration_challenge_bytes_v2("aa", "acme", "alice", NONCE, 1_700_000_000)
-            .map_err(|e| e.to_string())?;
+    let v1 = wire::registration_challenge_bytes("aa", "acme", "alice", NONCE, 1_700_000_000)
+        .map_err(|e| e.to_string())?;
+    let v2 = wire_v2::registration_challenge_bytes_v2("aa", "acme", "alice", NONCE, 1_700_000_000)
+        .map_err(|e| e.to_string())?;
     if v1 == v2 {
         return Err("v1 and v2 bytes collide for identical inputs".into());
     }
@@ -280,8 +278,7 @@ async fn test_cross_version_isolation() -> Result<(), String> {
 
 async fn test_jws_algorithm_whitelist() -> Result<(), String> {
     let sk = SigningKey::from_bytes(&[1u8; 32]);
-    let jws = sign_ed25519(b"payload", &sk, "did:key:test")
-        .map_err(|e| e.to_string())?;
+    let jws = sign_ed25519(b"payload", &sk, "did:key:test").map_err(|e| e.to_string())?;
     let _ = verify(&jws, |_| Ok(Some(VerifierKey::Ed25519(sk.verifying_key()))))
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -483,13 +480,8 @@ async fn test_capability_forward_compat() -> Result<(), String> {
 }
 
 async fn test_wire_v2_rejects_nonce_too_short() -> Result<(), String> {
-    let r = wire_v2::registration_challenge_bytes_v2(
-        "aa",
-        "acme",
-        "alice",
-        "deadbeef",
-        1_700_000_000,
-    );
+    let r =
+        wire_v2::registration_challenge_bytes_v2("aa", "acme", "alice", "deadbeef", 1_700_000_000);
     if r.is_ok() {
         return Err("short nonce accepted".into());
     }
@@ -497,13 +489,7 @@ async fn test_wire_v2_rejects_nonce_too_short() -> Result<(), String> {
 }
 
 async fn test_wire_v2_rejects_newline_in_fields() -> Result<(), String> {
-    let r = wire_v2::registration_challenge_bytes_v2(
-        "aa",
-        "ac\nme",
-        "alice",
-        NONCE,
-        1_700_000_000,
-    );
+    let r = wire_v2::registration_challenge_bytes_v2("aa", "ac\nme", "alice", NONCE, 1_700_000_000);
     if r.is_ok() {
         return Err("newline in org field accepted".into());
     }

@@ -252,9 +252,7 @@ impl ResolverChain {
         })?;
 
         let if_none_match = self.cache_etag(agent_id).await;
-        let outcome = resolver
-            .resolve(agent_id, if_none_match.as_deref())
-            .await?;
+        let outcome = resolver.resolve(agent_id, if_none_match.as_deref()).await?;
 
         let record = match outcome {
             ResolveOutcome::Fresh(rec) => {
@@ -438,10 +436,7 @@ mod tests {
         let resolver = Arc::new(CountingResolver::new(IdScheme::DidWeb));
         let chain = chain_with(resolver);
         // did:ethr scheme has no resolver registered.
-        let err = chain
-            .resolve("did:ethr:8453:0xabc")
-            .await
-            .unwrap_err();
+        let err = chain.resolve("did:ethr:8453:0xabc").await.unwrap_err();
         assert!(matches!(err, ResolverError::NoResolverForScheme { .. }));
     }
 

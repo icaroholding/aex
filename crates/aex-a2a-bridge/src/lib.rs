@@ -147,9 +147,7 @@ where
 {
     // (1) Structural checks.
     if task.hops.is_empty() {
-        return Err(BridgeError::UnsupportedA2A(
-            "A2A task has zero hops".into(),
-        ));
+        return Err(BridgeError::UnsupportedA2A("A2A task has zero hops".into()));
     }
     if task.hops.len() > MAX_DELEGATION_DEPTH {
         return Err(BridgeError::DelegationTooDeep {
@@ -236,12 +234,7 @@ mod tests {
     use aex_jws::sign_ed25519;
     use ed25519_dalek::SigningKey;
 
-    fn make_hop(
-        sk: &SigningKey,
-        from: &str,
-        to: &str,
-        attachment: Option<&[u8]>,
-    ) -> A2AHop {
+    fn make_hop(sk: &SigningKey, from: &str, to: &str, attachment: Option<&[u8]>) -> A2AHop {
         // The hop's signed payload is, for test purposes, the
         // concatenation of (from, to); production A2A specifies a
         // canonical task header but the bridge only requires the JWS
@@ -324,10 +317,7 @@ mod tests {
         .unwrap();
         assert_eq!(intent.chain.len(), 3);
         assert_eq!(intent.original_sender.as_str(), alice_id);
-        assert_eq!(
-            intent.final_recipient.as_str(),
-            "did:web:delta.com#dave"
-        );
+        assert_eq!(intent.final_recipient.as_str(), "did:web:delta.com#dave");
     }
 
     #[test]
@@ -456,11 +446,15 @@ mod tests {
         let task = A2ATask {
             task_id: "t9".into(),
             task_type: None,
-            hops: vec![make_hop(&sk_a, alice_id, "did:web:bob.com#x", Some(payload))],
+            hops: vec![make_hop(
+                &sk_a,
+                alice_id,
+                "did:web:bob.com#x",
+                Some(payload),
+            )],
         };
         let intent =
-            a2a_task_to_aex_intent(&task, |_| Ok(Some(VerifierKey::Ed25519(vk_a))))
-                .unwrap();
+            a2a_task_to_aex_intent(&task, |_| Ok(Some(VerifierKey::Ed25519(vk_a)))).unwrap();
         assert_eq!(intent.attachment.as_deref(), Some(&payload[..]));
     }
 

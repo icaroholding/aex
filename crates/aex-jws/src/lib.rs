@@ -69,7 +69,9 @@ pub enum JwsError {
     UnknownKid(String),
 
     /// `key_lookup` returned a key whose algorithm doesn't match `alg`.
-    #[error("kid '{kid}' resolves to a key of algorithm {key_alg}, but header declared {header_alg}")]
+    #[error(
+        "kid '{kid}' resolves to a key of algorithm {key_alg}, but header declared {header_alg}"
+    )]
     KidAlgMismatch {
         /// kid value from the header
         kid: String,
@@ -271,8 +273,8 @@ where
     // of `Algorithm` rejects unknown / malformed `alg` automatically
     // (returns serde error), which we re-classify as AlgorithmNotPermitted
     // when the raw value is recoverable.
-    let raw_header: serde_json::Value = serde_json::from_slice(&header_json)
-        .map_err(|e| JwsError::InvalidHeader(e.to_string()))?;
+    let raw_header: serde_json::Value =
+        serde_json::from_slice(&header_json).map_err(|e| JwsError::InvalidHeader(e.to_string()))?;
     // Pre-check alg shape explicitly so the error is precise.
     match raw_header.get("alg") {
         None => return Err(JwsError::InvalidHeader("missing alg".into())),
@@ -284,8 +286,8 @@ where
         Some(_) => return Err(JwsError::AlgorithmMalformed),
     }
 
-    let header: JwsHeader = serde_json::from_value(raw_header)
-        .map_err(|e| JwsError::InvalidHeader(e.to_string()))?;
+    let header: JwsHeader =
+        serde_json::from_value(raw_header).map_err(|e| JwsError::InvalidHeader(e.to_string()))?;
 
     if header.kid.is_empty() {
         return Err(JwsError::MissingKid);
@@ -570,8 +572,7 @@ mod tests {
     fn key_lookup_error_propagates() {
         let (sk, _vk) = fixed_ed25519_keypair();
         let jws = sign_ed25519(b"x", &sk, "did:web:bob").unwrap();
-        let err =
-            verify(&jws, |_| Err(JwsError::UnknownKid("db down".into()))).unwrap_err();
+        let err = verify(&jws, |_| Err(JwsError::UnknownKid("db down".into()))).unwrap_err();
         assert!(matches!(err, JwsError::UnknownKid(ref s) if s == "db down"));
     }
 
