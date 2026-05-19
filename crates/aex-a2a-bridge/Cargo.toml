@@ -1,0 +1,23 @@
+[package]
+name = "aex-a2a-bridge"
+description = "Bridge adapter between AEX transfer-intent v2 and Google A2A v1.0 task envelopes."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage = "https://spize.io"
+authors = ["Icaro Holding <oss@spize.io>"]
+keywords = ["aex", "a2a", "bridge", "agent"]
+categories = ["network-programming"]
+
+[dependencies]
+aex-core = { path = "../aex-core", version = "=1.3.0-beta.4" }
+aex-jws = { path = "../aex-jws", version = "=1.3.0-beta.4" }
+
+base64.workspace = true
+serde = { workspace = true }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ed25519-dalek.workspace = true
