@@ -5,15 +5,18 @@
 //! no crypto or IO dependencies — those live in per-concern crates that
 //! implement the traits defined here.
 
+pub mod capability;
 pub mod endpoint;
 pub mod error;
 pub mod identity;
 pub mod signature;
 pub mod types;
 pub mod wire;
+pub mod wire_v2;
 
+pub use capability::{Capability, CapabilitySet};
 pub use endpoint::{Endpoint, EndpointHealth, HealthStatus};
 pub use error::{Error, Result};
 pub use identity::{IdentityProvider, TrustMetadata};
 pub use signature::{Signature, SignatureAlgorithm};
-pub use types::{AgentId, IdScheme, TransferId};
+pub use types::{AgentId, DidUri, IdScheme, TransferId};
