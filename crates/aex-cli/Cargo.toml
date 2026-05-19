@@ -1,0 +1,23 @@
+[package]
+name = "aex-cli"
+description = "Command-line utility for the Agent Exchange Protocol (AEX): identity QR codes, resolver debugging."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage = "https://spize.io"
+authors = ["Icaro Holding <oss@spize.io>"]
+keywords = ["aex", "cli", "qr"]
+categories = ["command-line-utilities"]
+
+[[bin]]
+name = "aex-cli"
+path = "src/main.rs"
+
+[dependencies]
+aex-core = { path = "../aex-core", version = "=1.3.0-beta.4" }
+aex-identity = { path = "../aex-identity", version = "=1.3.0-beta.4" }
+
+clap.workspace = true
+qrcode.workspace = true
+tokio = { workspace = true, features = ["full"] }
