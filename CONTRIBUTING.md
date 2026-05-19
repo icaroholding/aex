@@ -23,7 +23,10 @@ Thank you for considering a contribution. AEX is an open protocol — the more i
 
 ```bash
 git clone https://github.com/icaroholding/aex
-cd spize
+cd aex
+
+# One-shot dev setup (activates git hooks; see "Git hooks" below).
+scripts/setup-dev.sh
 
 # Rust workspace
 cargo build --workspace
@@ -65,6 +68,51 @@ cd packages/mcp-server && npm run build  # no runtime tests yet
 
 We use [conventional commits](https://www.conventionalcommits.org/) prefixes: `feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:`, `ci:`, `build:`.
 
+## Git hooks
+
+The repository ships with two opt-in hooks under [`.githooks/`](.githooks/):
+
+- **`pre-commit`** — runs `cargo fmt --all -- --check` only when staged
+  changes touch Rust files. Fast (< 2s on a warm cache); designed to
+  run on every commit.
+- **`pre-push`** — runs the full local equivalent of the CI Rust job:
+  `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D
+  warnings`, and `cargo test --workspace --exclude aex-control-plane`.
+  Total runtime ~30s-2min depending on cache.
+
+Activate them in your clone:
+
+```bash
+scripts/setup-dev.sh
+# equivalent to: git config core.hooksPath .githooks
+```
+
+The hooks are local-only — they live in your clone, never run on
+GitHub. They exist to catch the same failures CI would catch, before
+you push. Bypass once with `--no-verify` when needed (e.g. CI
+debugging, intentional fmt-skip on docs-only commits).
+
+## Protocol changes vs implementation changes
+
+AEX is a protocol first, a set of implementations second. If your
+change touches the wire format:
+
+1. Open a discussion issue first; describe motivation, proposed
+   bytes, and the backwards-compatibility story.
+2. Update [`docs/protocol-v2.md`](docs/protocol-v2.md) in the same PR
+   as the implementation change. (Wire v1 is frozen — only the
+   sunset path documented in
+   [ADR-0043](docs/decisions/0043-capability-negotiation-dual-wire.md)
+   applies to it.)
+3. Add a corresponding ADR under [`docs/decisions/`](docs/decisions/)
+   if the change has long-term architectural implications.
+4. Add a conformance test in
+   [`crates/aex-conformance`](crates/aex-conformance) so the change
+   is verifiable across implementations.
+
+Implementation-only changes (optimisations, refactors, new scanners)
+can go straight to a PR.
+
 ## Developer Certificate of Origin
 
 Every commit must be signed off with the DCO. This is a lightweight promise that you wrote the code or have the right to submit it under the project's license. No paperwork, no corporate CLA.
@@ -85,16 +133,6 @@ A GitHub App enforces DCO on every PR. Missing sign-off = PR blocked, fix by reb
 4. **Breaking changes** (wire format, public Rust API, SDK function signatures) require a `BREAKING CHANGE:` footer in the commit message and a bump to the major version.
 
 A maintainer will review within 72 hours. After approval, squash-and-merge into `master`.
-
-## Protocol changes vs implementation changes
-
-AEX is a protocol first, a set of implementations second. If your change touches the wire format:
-
-1. Start with a discussion issue: describe the motivation, proposed bytes, and backwards-compatibility story.
-2. Update `docs/protocol-v1.md` in the same PR as the implementation change.
-3. Bump the protocol minor version if the change is additive (new optional field), major if breaking.
-
-Implementation-only changes (optimizations, refactors, new scanners) can go straight to a PR.
 
 ## Reporting bugs
 

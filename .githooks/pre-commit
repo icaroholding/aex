@@ -1,0 +1,38 @@
+#!/bin/sh
+# AEX pre-commit hook — fast checks only.
+#
+# Currently runs:
+#   - cargo fmt --all -- --check  (Rust formatting)
+#
+# We deliberately keep this hook fast (< 2s on a warm cache).
+# Slower checks (clippy, tests) run in the pre-push hook so they
+# only execute when you actually publish the change.
+#
+# Activation: `git config core.hooksPath .githooks` (or run
+# `scripts/setup-dev.sh`). Bypassing once: `git commit --no-verify`.
+#
+# Authored as part of the v2 rollout; if you want to add or remove
+# checks, edit this file directly — it is tracked.
+
+set -e
+
+if ! command -v cargo >/dev/null 2>&1; then
+    echo "pre-commit: cargo not on PATH; skipping Rust fmt check" >&2
+    exit 0
+fi
+
+# Only run if there are staged Rust changes — saves time on
+# docs-only / SDK-only commits.
+if git diff --cached --name-only | grep -qE '\.rs$|Cargo\.toml$|Cargo\.lock$'; then
+    echo "pre-commit: cargo fmt --all -- --check"
+    if ! cargo fmt --all -- --check; then
+        echo ""
+        echo "✗ Rust formatting check failed."
+        echo "  Run: cargo fmt --all"
+        echo "  Then re-stage and commit."
+        echo "  To bypass once: git commit --no-verify"
+        exit 1
+    fi
+fi
+
+exit 0

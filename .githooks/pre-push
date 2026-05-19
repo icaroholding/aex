@@ -1,0 +1,49 @@
+#!/bin/sh
+# AEX pre-push hook — full local verification before publishing.
+#
+# Runs the same checks that CI gates on, so a push that survives
+# this hook is very likely to leave CI green:
+#
+#   - cargo fmt --all -- --check
+#   - cargo clippy --workspace --all-targets -- -D warnings
+#   - cargo test --workspace --exclude aex-control-plane
+#     (control-plane tests need DATABASE_URL; CI provides one,
+#      local dev typically doesn't)
+#
+# Total runtime on a warm cache: ~30s-2min. If you need to push
+# urgently (e.g. CI debugging): git push --no-verify.
+#
+# Activation: `git config core.hooksPath .githooks` (or run
+# `scripts/setup-dev.sh`).
+
+set -e
+
+if ! command -v cargo >/dev/null 2>&1; then
+    echo "pre-push: cargo not on PATH; skipping Rust checks" >&2
+    exit 0
+fi
+
+echo "pre-push: cargo fmt --all -- --check"
+cargo fmt --all -- --check || {
+    echo ""
+    echo "✗ Run: cargo fmt --all"
+    exit 1
+}
+
+echo "pre-push: cargo clippy --workspace --all-targets -- -D warnings"
+cargo clippy --workspace --all-targets -- -D warnings || {
+    echo ""
+    echo "✗ Clippy warnings would fail CI. Fix above before pushing."
+    exit 1
+}
+
+echo "pre-push: cargo test --workspace --exclude aex-control-plane"
+cargo test --workspace --exclude aex-control-plane --quiet || {
+    echo ""
+    echo "✗ Tests failed locally. Fix before pushing."
+    exit 1
+}
+
+echo ""
+echo "✓ All pre-push checks passed."
+exit 0
