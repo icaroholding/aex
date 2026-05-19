@@ -1,9 +1,11 @@
 pub mod admin;
+pub mod agent_card;
 pub mod agents;
 pub mod health;
 pub mod inbox;
 pub mod metrics;
 pub mod transfers;
+pub mod v2;
 
 use axum::{middleware, Router};
 

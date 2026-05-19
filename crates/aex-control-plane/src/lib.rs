@@ -181,6 +181,8 @@ pub fn public_routes(state: AppState) -> Router {
     Router::new()
         .merge(routes::health::router())
         .merge(routes::metrics::router())
+        .merge(routes::agent_card::router())
+        .merge(routes::v2::router())
         .nest("/v1", routes::v1_router(state.clone()))
         .with_state(state)
 }
