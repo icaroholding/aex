@@ -11,6 +11,10 @@ members = [
     "crates/aex-billing",
     "crates/aex-data-plane",
     "crates/aex-net",
+    "crates/aex-jws",
+    "crates/aex-cli",
+    "crates/aex-conformance",
+    "crates/aex-a2a-bridge",
 ]
 
 [workspace.package]
@@ -45,6 +49,7 @@ hex = "0.4"
 rand = "0.8"
 ed25519-dalek = { version = "2", features = ["rand_core", "std"] }
 k256 = { version = "0.13", features = ["ecdsa"] }
+base64 = "0.22"
 
 # HTTP server
 axum = "0.7"
@@ -60,6 +65,10 @@ time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"
 # Futures + regex
 futures = "0.3"
 regex = "1"
+
+# CLI parsing + QR generation (used by aex-cli)
+clap = { version = "4", features = ["derive"] }
+qrcode = "0.14"
 
 # Network (shared by aex-net, aex-control-plane, aex-data-plane)
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }

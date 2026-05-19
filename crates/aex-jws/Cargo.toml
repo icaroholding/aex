@@ -1,0 +1,24 @@
+[package]
+name = "aex-jws"
+description = "JWS (RFC 7515 Compact Serialization) sign/verify for AEX agent cards. EdDSA and ES256K only; algorithm whitelist hardcoded per ADR-0045."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage = "https://spize.io"
+authors = ["Icaro Holding <oss@spize.io>"]
+keywords = ["aex", "jws", "jose", "ed25519", "secp256k1"]
+categories = ["cryptography"]
+
+[dependencies]
+base64.workspace = true
+ed25519-dalek = { workspace = true }
+k256 = { workspace = true }
+serde = { workspace = true }
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+hex.workspace = true
+rand.workspace = true
