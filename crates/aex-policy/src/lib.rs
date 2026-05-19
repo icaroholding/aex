@@ -25,10 +25,15 @@
 
 pub mod decision;
 pub mod request;
+pub mod sink;
 pub mod tier;
 
 pub use decision::{PolicyDecision, TierName};
 pub use request::{PolicyRequest, RecipientKind};
+pub use sink::{
+    DecisionOutcome, DecisionRequest, DecisionResponse, DecisionSink, DecisionSinkError,
+    InProcessDecisionSink, WebhookDecisionSink, WebhookSinkError,
+};
 pub use tier::TierPolicy;
 
 use async_trait::async_trait;
