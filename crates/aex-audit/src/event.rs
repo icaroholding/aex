@@ -29,6 +29,17 @@ pub enum EventKind {
     TransferDelivered,
     TransferRejected,
     TransferExpired,
+    /// Deferred decision (ADR-0049) — the policy engine returned
+    /// `Pending` and the control plane signed an
+    /// `aex-decision-request:v2` for the sender.
+    DeferredDecisionRequested,
+    /// Deferred decision (ADR-0049) — a signed
+    /// `aex-decision-response:v2` was emitted with the final
+    /// accept/reject outcome. The payload SHOULD include the
+    /// decision_id, the outcome, and the optional reason; together
+    /// with the actor (the recipient agent) this gives a
+    /// non-repudiable receipt of the decision.
+    SignedDecisionReceipt,
 }
 
 impl EventKind {
@@ -43,6 +54,8 @@ impl EventKind {
             EventKind::TransferDelivered => "transfer_delivered",
             EventKind::TransferRejected => "transfer_rejected",
             EventKind::TransferExpired => "transfer_expired",
+            EventKind::DeferredDecisionRequested => "deferred_decision_requested",
+            EventKind::SignedDecisionReceipt => "signed_decision_receipt",
         }
     }
 }
