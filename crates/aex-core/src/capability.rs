@@ -56,6 +56,20 @@ pub enum Capability {
     /// Agent supports the streaming transfer mode (chunked uploads
     /// with intermediate ack). Reserved for v2.2.
     StreamingTransfer,
+    /// Agent's responses to inbound intents may be deferred — the
+    /// recipient takes time to decide before approving or rejecting
+    /// a transfer. Senders observing this bit MUST handle an HTTP
+    /// 202 Accepted response and wait for an
+    /// `aex-decision-response:v2` signed message before considering
+    /// the transfer settled.
+    ///
+    /// The protocol takes no position on **who** the decider is
+    /// (human prompt, secondary AI model, policy engine, consensus
+    /// of multiple agents). The bit only signals "I do not answer
+    /// synchronously".
+    ///
+    /// ADR-0049.
+    DeferredDecision,
 }
 
 impl Capability {
@@ -69,6 +83,7 @@ impl Capability {
         Capability::SafeHttp,
         Capability::ClockSkew60s,
         Capability::StreamingTransfer,
+        Capability::DeferredDecision,
     ];
 
     /// Stable bit position in [`CapabilitySet`]. **Never renumber.**
@@ -82,6 +97,7 @@ impl Capability {
             Capability::SafeHttp => 5,
             Capability::ClockSkew60s => 6,
             Capability::StreamingTransfer => 7,
+            Capability::DeferredDecision => 8,
         }
     }
 
@@ -96,6 +112,7 @@ impl Capability {
             Capability::SafeHttp => "safe-http",
             Capability::ClockSkew60s => "clock-skew-60s",
             Capability::StreamingTransfer => "streaming-transfer",
+            Capability::DeferredDecision => "deferred-decision",
         }
     }
 
@@ -222,6 +239,7 @@ mod tests {
         assert_eq!(Capability::SafeHttp.as_bit(), 5);
         assert_eq!(Capability::ClockSkew60s.as_bit(), 6);
         assert_eq!(Capability::StreamingTransfer.as_bit(), 7);
+        assert_eq!(Capability::DeferredDecision.as_bit(), 8);
     }
 
     #[test]
@@ -237,6 +255,7 @@ mod tests {
         assert_eq!(Capability::SafeHttp.as_str(), "safe-http");
         assert_eq!(Capability::ClockSkew60s.as_str(), "clock-skew-60s");
         assert_eq!(Capability::StreamingTransfer.as_str(), "streaming-transfer");
+        assert_eq!(Capability::DeferredDecision.as_str(), "deferred-decision");
     }
 
     #[test]

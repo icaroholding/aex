@@ -236,6 +236,120 @@ pub fn transfer_receipt_bytes_v2(
     Ok(msg.into_bytes())
 }
 
+/// Canonical bytes for an `aex-decision-request:v2` message.
+///
+/// Signed by the **recipient** and returned to the sender when an
+/// inbound transfer cannot be answered synchronously — typically
+/// because a deferred decider (human, secondary AI, policy engine,
+/// or consensus) needs time to evaluate the request. The protocol
+/// takes no position on who the decider is.
+///
+/// Format:
+/// ```text
+/// aex-decision-request:v2
+/// recipient={recipient_agent_id}
+/// transfer={transfer_id}
+/// decision={decision_id}
+/// eta_secs={eta_seconds}
+/// nonce={nonce}
+/// ts={issued_at_unix}
+/// ```
+///
+/// `eta_seconds` is a non-negative integer hint for how long the
+/// sender should expect to wait. `0` means "as soon as practical";
+/// negative values are rejected.
+///
+/// Reference: ADR-0049.
+pub fn decision_request_bytes_v2(
+    recipient_agent_id: &str,
+    transfer_id: &str,
+    decision_id: &str,
+    eta_seconds: u64,
+    nonce: &str,
+    issued_at_unix: i64,
+) -> Result<Vec<u8>> {
+    validate_ascii_line(recipient_agent_id, "recipient_agent_id")?;
+    validate_ascii_line(transfer_id, "transfer_id")?;
+    validate_ascii_line(decision_id, "decision_id")?;
+    validate_nonce(nonce)?;
+
+    let msg = format!(
+        "aex-decision-request:{version}\nrecipient={rec}\ntransfer={tx}\ndecision={dec}\neta_secs={eta}\nnonce={nonce}\nts={ts}",
+        version = PROTOCOL_VERSION_V2,
+        rec = recipient_agent_id,
+        tx = transfer_id,
+        dec = decision_id,
+        eta = eta_seconds,
+        nonce = nonce,
+        ts = issued_at_unix,
+    );
+    Ok(msg.into_bytes())
+}
+
+/// Canonical bytes for an `aex-decision-response:v2` message.
+///
+/// Signed by the **recipient** and sent to the sender once the
+/// deferred decision has been taken. Carries the outcome and an
+/// optional human-readable reason. Once a response is delivered for
+/// a given `decision_id`, the decision is final — changing one's
+/// mind requires a new transfer.
+///
+/// Format:
+/// ```text
+/// aex-decision-response:v2
+/// recipient={recipient_agent_id}
+/// transfer={transfer_id}
+/// decision={decision_id}
+/// outcome={accepted|rejected}
+/// reason={reason_or_empty}
+/// nonce={nonce}
+/// ts={issued_at_unix}
+/// ```
+///
+/// `outcome` is exactly one of `accepted` or `rejected`. `reason`
+/// is optional (empty allowed). The verifier-side MUST persist
+/// this message in the audit chain as a
+/// [`SignedDecisionReceipt`](`crate`) event so the decision is
+/// non-repudiable.
+///
+/// Reference: ADR-0049.
+pub fn decision_response_bytes_v2(
+    recipient_agent_id: &str,
+    transfer_id: &str,
+    decision_id: &str,
+    outcome: &str,
+    reason: &str,
+    nonce: &str,
+    issued_at_unix: i64,
+) -> Result<Vec<u8>> {
+    validate_ascii_line(recipient_agent_id, "recipient_agent_id")?;
+    validate_ascii_line(transfer_id, "transfer_id")?;
+    validate_ascii_line(decision_id, "decision_id")?;
+    validate_ascii_line(outcome, "outcome")?;
+    validate_ascii_line_opt(reason, "reason")?;
+    validate_nonce(nonce)?;
+
+    if !matches!(outcome, "accepted" | "rejected") {
+        return Err(Error::Internal(format!(
+            "outcome must be 'accepted' or 'rejected', got {}",
+            outcome
+        )));
+    }
+
+    let msg = format!(
+        "aex-decision-response:{version}\nrecipient={rec}\ntransfer={tx}\ndecision={dec}\noutcome={out}\nreason={reason}\nnonce={nonce}\nts={ts}",
+        version = PROTOCOL_VERSION_V2,
+        rec = recipient_agent_id,
+        tx = transfer_id,
+        dec = decision_id,
+        out = outcome,
+        reason = reason,
+        nonce = nonce,
+        ts = issued_at_unix,
+    );
+    Ok(msg.into_bytes())
+}
+
 // ── shared validators (duplicate of wire.rs internals; intentional to
 // keep v1 untouched and v2 self-contained) ──────────────────────────
 
@@ -448,6 +562,117 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(err, Error::Internal(_)));
+    }
+
+    #[test]
+    fn v2_decision_request_stable() {
+        let bytes = decision_request_bytes_v2(
+            "did:web:acme.com#agent-vendite",
+            "tx_abc123",
+            "dec_0001",
+            86_400,
+            NONCE,
+            1_700_000_000,
+        )
+        .unwrap();
+        let expected = "aex-decision-request:v2\nrecipient=did:web:acme.com#agent-vendite\ntransfer=tx_abc123\ndecision=dec_0001\neta_secs=86400\nnonce=0123456789abcdef0123456789abcdef\nts=1700000000";
+        assert_eq!(bytes, expected.as_bytes());
+    }
+
+    #[test]
+    fn v2_decision_response_accepted_stable() {
+        let bytes = decision_response_bytes_v2(
+            "did:web:acme.com#agent-vendite",
+            "tx_abc123",
+            "dec_0001",
+            "accepted",
+            "",
+            NONCE,
+            1_700_000_000,
+        )
+        .unwrap();
+        let expected = "aex-decision-response:v2\nrecipient=did:web:acme.com#agent-vendite\ntransfer=tx_abc123\ndecision=dec_0001\noutcome=accepted\nreason=\nnonce=0123456789abcdef0123456789abcdef\nts=1700000000";
+        assert_eq!(bytes, expected.as_bytes());
+    }
+
+    #[test]
+    fn v2_decision_response_rejected_with_reason_stable() {
+        let bytes = decision_response_bytes_v2(
+            "did:web:acme.com#agent-vendite",
+            "tx_abc123",
+            "dec_0001",
+            "rejected",
+            "operator declined: budget exceeded",
+            NONCE,
+            1_700_000_000,
+        )
+        .unwrap();
+        let s = std::str::from_utf8(&bytes).unwrap();
+        assert!(s.starts_with("aex-decision-response:v2\n"));
+        assert!(s.contains("outcome=rejected\n"));
+        assert!(s.contains("reason=operator declined: budget exceeded\n"));
+    }
+
+    #[test]
+    fn v2_decision_response_rejects_bad_outcome() {
+        let err = decision_response_bytes_v2(
+            "did:web:acme.com#agent-vendite",
+            "tx_abc123",
+            "dec_0001",
+            "maybe",
+            "",
+            NONCE,
+            1_700_000_000,
+        )
+        .unwrap_err();
+        assert!(matches!(err, Error::Internal(_)));
+    }
+
+    #[test]
+    fn v2_decision_request_rejects_newline_in_fields() {
+        let err = decision_request_bytes_v2(
+            "did:web:acme.com#agent-vendite",
+            "tx_abc\n123",
+            "dec_0001",
+            60,
+            NONCE,
+            1_700_000_000,
+        )
+        .unwrap_err();
+        assert!(matches!(err, Error::Internal(_)));
+    }
+
+    #[test]
+    fn v2_decision_messages_distinguish_request_from_response() {
+        // Two messages with the same business fields must produce
+        // distinct bytes — the prefix differs (request vs response),
+        // so signatures bound to one cannot replay as the other.
+        let req = decision_request_bytes_v2(
+            "did:web:acme.com#x",
+            "tx_1",
+            "dec_1",
+            60,
+            NONCE,
+            1_700_000_000,
+        )
+        .unwrap();
+        let resp = decision_response_bytes_v2(
+            "did:web:acme.com#x",
+            "tx_1",
+            "dec_1",
+            "accepted",
+            "",
+            NONCE,
+            1_700_000_000,
+        )
+        .unwrap();
+        assert_ne!(req, resp);
+        assert!(std::str::from_utf8(&req)
+            .unwrap()
+            .starts_with("aex-decision-request:v2\n"));
+        assert!(std::str::from_utf8(&resp)
+            .unwrap()
+            .starts_with("aex-decision-response:v2\n"));
     }
 
     #[test]
