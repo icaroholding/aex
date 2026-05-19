@@ -15,6 +15,8 @@ import {
   MIN_NONCE_LEN,
   PROTOCOL_VERSION_V2,
   dataTicketBytesV2,
+  decisionRequestBytesV2,
+  decisionResponseBytesV2,
   isWithinClockSkewV2,
   registrationChallengeBytesV2,
   rotateKeyChallengeBytesV2,
@@ -265,6 +267,130 @@ describe("wire-v2 cross-version invariant", () => {
     const v2Str = new TextDecoder("utf-8").decode(v2);
     expect(v1Str.startsWith("spize-")).toBe(true);
     expect(v2Str.startsWith("aex-")).toBe(true);
+  });
+});
+
+describe("wire-v2 deferred decision (ADR-0049)", () => {
+  it("decision request canonical bytes are stable", () => {
+    const out = decisionRequestBytesV2({
+      recipientAgentId: "did:web:acme.com#agent-vendite",
+      transferId: "tx_abc123",
+      decisionId: "dec_0001",
+      etaSeconds: 86_400,
+      nonce: NONCE,
+      issuedAtUnix: 1_700_000_000,
+    });
+    const expected = bytes(
+      "aex-decision-request:v2\n" +
+        "recipient=did:web:acme.com#agent-vendite\n" +
+        "transfer=tx_abc123\n" +
+        "decision=dec_0001\n" +
+        "eta_secs=86400\n" +
+        "nonce=0123456789abcdef0123456789abcdef\n" +
+        "ts=1700000000",
+    );
+    expect(out).toEqual(expected);
+  });
+
+  it("decision response accepted canonical bytes are stable", () => {
+    const out = decisionResponseBytesV2({
+      recipientAgentId: "did:web:acme.com#agent-vendite",
+      transferId: "tx_abc123",
+      decisionId: "dec_0001",
+      outcome: "accepted",
+      reason: "",
+      nonce: NONCE,
+      issuedAtUnix: 1_700_000_000,
+    });
+    const expected = bytes(
+      "aex-decision-response:v2\n" +
+        "recipient=did:web:acme.com#agent-vendite\n" +
+        "transfer=tx_abc123\n" +
+        "decision=dec_0001\n" +
+        "outcome=accepted\n" +
+        "reason=\n" +
+        "nonce=0123456789abcdef0123456789abcdef\n" +
+        "ts=1700000000",
+    );
+    expect(out).toEqual(expected);
+  });
+
+  it("decision response rejected with reason carries through", () => {
+    const out = decisionResponseBytesV2({
+      recipientAgentId: "did:web:acme.com#agent-vendite",
+      transferId: "tx_abc123",
+      decisionId: "dec_0001",
+      outcome: "rejected",
+      reason: "operator declined: budget exceeded",
+      nonce: NONCE,
+      issuedAtUnix: 1_700_000_000,
+    });
+    const s = new TextDecoder("utf-8").decode(out);
+    expect(s.startsWith("aex-decision-response:v2\n")).toBe(true);
+    expect(s.includes("outcome=rejected\n")).toBe(true);
+    expect(s.includes("reason=operator declined: budget exceeded\n")).toBe(true);
+  });
+
+  it("rejects bad outcome", () => {
+    expect(() =>
+      decisionResponseBytesV2({
+        recipientAgentId: "did:web:acme.com#agent-vendite",
+        transferId: "tx_abc123",
+        decisionId: "dec_0001",
+        // @ts-expect-error: intentionally bad
+        outcome: "maybe",
+        reason: "",
+        nonce: NONCE,
+        issuedAtUnix: 1_700_000_000,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects negative eta", () => {
+    expect(() =>
+      decisionRequestBytesV2({
+        recipientAgentId: "did:web:acme.com#agent-vendite",
+        transferId: "tx_abc123",
+        decisionId: "dec_0001",
+        etaSeconds: -1,
+        nonce: NONCE,
+        issuedAtUnix: 1_700_000_000,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects newline in decision id", () => {
+    expect(() =>
+      decisionRequestBytesV2({
+        recipientAgentId: "did:web:acme.com#agent-vendite",
+        transferId: "tx_abc123",
+        decisionId: "dec\n0001",
+        etaSeconds: 60,
+        nonce: NONCE,
+        issuedAtUnix: 1_700_000_000,
+      }),
+    ).toThrow();
+  });
+
+  it("request and response with same fields produce different bytes", () => {
+    const req = decisionRequestBytesV2({
+      recipientAgentId: "did:web:acme.com#x",
+      transferId: "tx_1",
+      decisionId: "dec_1",
+      etaSeconds: 60,
+      nonce: NONCE,
+      issuedAtUnix: 1_700_000_000,
+    });
+    const resp = decisionResponseBytesV2({
+      recipientAgentId: "did:web:acme.com#x",
+      transferId: "tx_1",
+      decisionId: "dec_1",
+      outcome: "accepted",
+      reason: "",
+      nonce: NONCE,
+      issuedAtUnix: 1_700_000_000,
+    });
+    expect(req).not.toEqual(resp);
   });
 });
 

@@ -17,6 +17,8 @@ from aex_sdk.wire_v2 import (
     MIN_NONCE_LEN,
     PROTOCOL_VERSION_V2,
     data_ticket_bytes_v2,
+    decision_request_bytes_v2,
+    decision_response_bytes_v2,
     is_within_clock_skew_v2,
     registration_challenge_bytes_v2,
     rotate_key_challenge_bytes_v2,
@@ -230,3 +232,117 @@ def test_v2_skew_extreme_inputs_safe() -> None:
     now = 1_700_000_000
     assert is_within_clock_skew_v2(now, -(2**63)) is False
     assert is_within_clock_skew_v2(now, 2**63) is False
+
+
+# ── Deferred decision messages (ADR-0049) ──────────────────────────
+
+
+def test_v2_decision_request_stable() -> None:
+    out = decision_request_bytes_v2(
+        "did:web:acme.com#agent-vendite",
+        "tx_abc123",
+        "dec_0001",
+        86_400,
+        NONCE,
+        1_700_000_000,
+    )
+    expected = (
+        b"aex-decision-request:v2\n"
+        b"recipient=did:web:acme.com#agent-vendite\n"
+        b"transfer=tx_abc123\n"
+        b"decision=dec_0001\n"
+        b"eta_secs=86400\n"
+        b"nonce=0123456789abcdef0123456789abcdef\n"
+        b"ts=1700000000"
+    )
+    assert out == expected
+
+
+def test_v2_decision_response_accepted_stable() -> None:
+    out = decision_response_bytes_v2(
+        "did:web:acme.com#agent-vendite",
+        "tx_abc123",
+        "dec_0001",
+        "accepted",
+        "",
+        NONCE,
+        1_700_000_000,
+    )
+    expected = (
+        b"aex-decision-response:v2\n"
+        b"recipient=did:web:acme.com#agent-vendite\n"
+        b"transfer=tx_abc123\n"
+        b"decision=dec_0001\n"
+        b"outcome=accepted\n"
+        b"reason=\n"
+        b"nonce=0123456789abcdef0123456789abcdef\n"
+        b"ts=1700000000"
+    )
+    assert out == expected
+
+
+def test_v2_decision_response_rejected_with_reason() -> None:
+    out = decision_response_bytes_v2(
+        "did:web:acme.com#agent-vendite",
+        "tx_abc123",
+        "dec_0001",
+        "rejected",
+        "operator declined: budget exceeded",
+        NONCE,
+        1_700_000_000,
+    )
+    s = out.decode("ascii")
+    assert s.startswith("aex-decision-response:v2\n")
+    assert "outcome=rejected\n" in s
+    assert "reason=operator declined: budget exceeded\n" in s
+
+
+def test_v2_decision_response_rejects_bad_outcome() -> None:
+    with pytest.raises(ValueError):
+        decision_response_bytes_v2(
+            "did:web:acme.com#agent-vendite",
+            "tx_abc123",
+            "dec_0001",
+            "maybe",
+            "",
+            NONCE,
+            1_700_000_000,
+        )
+
+
+def test_v2_decision_request_rejects_negative_eta() -> None:
+    with pytest.raises(ValueError):
+        decision_request_bytes_v2(
+            "did:web:acme.com#agent-vendite",
+            "tx_abc123",
+            "dec_0001",
+            -1,
+            NONCE,
+            1_700_000_000,
+        )
+
+
+def test_v2_decision_request_rejects_newline_in_decision_id() -> None:
+    with pytest.raises(ValueError):
+        decision_request_bytes_v2(
+            "did:web:acme.com#agent-vendite",
+            "tx_abc123",
+            "dec\n0001",
+            60,
+            NONCE,
+            1_700_000_000,
+        )
+
+
+def test_v2_decision_messages_distinguish_request_from_response() -> None:
+    """Critical invariant: request and response with same business
+    fields must produce distinct byte sequences (prefix differs)."""
+    req = decision_request_bytes_v2(
+        "did:web:acme.com#x", "tx_1", "dec_1", 60, NONCE, 1_700_000_000
+    )
+    resp = decision_response_bytes_v2(
+        "did:web:acme.com#x", "tx_1", "dec_1", "accepted", "", NONCE, 1_700_000_000
+    )
+    assert req != resp
+    assert req.startswith(b"aex-decision-request:v2\n")
+    assert resp.startswith(b"aex-decision-response:v2\n")

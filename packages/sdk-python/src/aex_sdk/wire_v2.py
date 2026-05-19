@@ -175,3 +175,69 @@ def transfer_receipt_bytes_v2(
         f"nonce={nonce}\n"
         f"ts={issued_at_unix}"
     ).encode("ascii")
+
+
+def decision_request_bytes_v2(
+    recipient_agent_id: str,
+    transfer_id: str,
+    decision_id: str,
+    eta_seconds: int,
+    nonce: str,
+    issued_at_unix: int,
+) -> bytes:
+    """Canonical bytes for an ``aex-decision-request:v2`` message (ADR-0049).
+
+    Signed by the recipient and returned to the sender when an
+    inbound transfer cannot be answered synchronously.
+    """
+    _validate_ascii_line(recipient_agent_id, "recipient_agent_id")
+    _validate_ascii_line(transfer_id, "transfer_id")
+    _validate_ascii_line(decision_id, "decision_id")
+    _validate_nonce(nonce)
+    if eta_seconds < 0:
+        raise ValueError("eta_seconds must be non-negative")
+    return (
+        f"aex-decision-request:{PROTOCOL_VERSION_V2}\n"
+        f"recipient={recipient_agent_id}\n"
+        f"transfer={transfer_id}\n"
+        f"decision={decision_id}\n"
+        f"eta_secs={eta_seconds}\n"
+        f"nonce={nonce}\n"
+        f"ts={issued_at_unix}"
+    ).encode("ascii")
+
+
+def decision_response_bytes_v2(
+    recipient_agent_id: str,
+    transfer_id: str,
+    decision_id: str,
+    outcome: str,
+    reason: str,
+    nonce: str,
+    issued_at_unix: int,
+) -> bytes:
+    """Canonical bytes for an ``aex-decision-response:v2`` message (ADR-0049).
+
+    Signed by the recipient once the deferred decision has been
+    taken. ``outcome`` must be exactly ``accepted`` or ``rejected``.
+    """
+    _validate_ascii_line(recipient_agent_id, "recipient_agent_id")
+    _validate_ascii_line(transfer_id, "transfer_id")
+    _validate_ascii_line(decision_id, "decision_id")
+    _validate_ascii_line(outcome, "outcome")
+    _validate_ascii_line(reason, "reason", allow_empty=True)
+    _validate_nonce(nonce)
+    if outcome not in ("accepted", "rejected"):
+        raise ValueError(
+            f"outcome must be 'accepted' or 'rejected', got {outcome}"
+        )
+    return (
+        f"aex-decision-response:{PROTOCOL_VERSION_V2}\n"
+        f"recipient={recipient_agent_id}\n"
+        f"transfer={transfer_id}\n"
+        f"decision={decision_id}\n"
+        f"outcome={outcome}\n"
+        f"reason={reason}\n"
+        f"nonce={nonce}\n"
+        f"ts={issued_at_unix}"
+    ).encode("ascii")

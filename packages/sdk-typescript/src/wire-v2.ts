@@ -192,3 +192,82 @@ export function transferReceiptBytesV2(args: {
       `ts=${args.issuedAtUnix}`,
   );
 }
+
+/**
+ * Canonical bytes for an `aex-decision-request:v2` message (ADR-0049).
+ *
+ * Signed by the recipient and returned to the sender when an inbound
+ * transfer cannot be answered synchronously.
+ */
+export function decisionRequestBytesV2(args: {
+  recipientAgentId: string;
+  transferId: string;
+  decisionId: string;
+  etaSeconds: number;
+  nonce: string;
+  issuedAtUnix: number;
+}): Uint8Array {
+  validateAsciiLine(args.recipientAgentId, "recipient_agent_id");
+  validateAsciiLine(args.transferId, "transfer_id");
+  validateAsciiLine(args.decisionId, "decision_id");
+  validateNonce(args.nonce);
+  if (args.etaSeconds < 0 || !Number.isFinite(args.etaSeconds)) {
+    throw new Error("eta_seconds must be a non-negative finite number");
+  }
+  return ENCODER.encode(
+    `aex-decision-request:${PROTOCOL_VERSION_V2}\n` +
+      `recipient=${args.recipientAgentId}\n` +
+      `transfer=${args.transferId}\n` +
+      `decision=${args.decisionId}\n` +
+      `eta_secs=${args.etaSeconds}\n` +
+      `nonce=${args.nonce}\n` +
+      `ts=${args.issuedAtUnix}`,
+  );
+}
+
+/** Stable wire-string set for decision outcomes (ADR-0049). */
+export type DecisionOutcomeV2 = "accepted" | "rejected";
+
+const DECISION_OUTCOMES_V2: readonly DecisionOutcomeV2[] = [
+  "accepted",
+  "rejected",
+];
+
+/**
+ * Canonical bytes for an `aex-decision-response:v2` message (ADR-0049).
+ *
+ * Signed by the recipient once the deferred decision has been taken.
+ * The `outcome` field is restricted to the wire-stable set
+ * `{accepted, rejected}`.
+ */
+export function decisionResponseBytesV2(args: {
+  recipientAgentId: string;
+  transferId: string;
+  decisionId: string;
+  outcome: DecisionOutcomeV2;
+  reason: string;
+  nonce: string;
+  issuedAtUnix: number;
+}): Uint8Array {
+  validateAsciiLine(args.recipientAgentId, "recipient_agent_id");
+  validateAsciiLine(args.transferId, "transfer_id");
+  validateAsciiLine(args.decisionId, "decision_id");
+  validateAsciiLine(args.outcome, "outcome");
+  validateAsciiLine(args.reason, "reason", { allowEmpty: true });
+  validateNonce(args.nonce);
+  if (!DECISION_OUTCOMES_V2.includes(args.outcome)) {
+    throw new Error(
+      `outcome must be one of ${DECISION_OUTCOMES_V2.join(", ")}, got ${args.outcome}`,
+    );
+  }
+  return ENCODER.encode(
+    `aex-decision-response:${PROTOCOL_VERSION_V2}\n` +
+      `recipient=${args.recipientAgentId}\n` +
+      `transfer=${args.transferId}\n` +
+      `decision=${args.decisionId}\n` +
+      `outcome=${args.outcome}\n` +
+      `reason=${args.reason}\n` +
+      `nonce=${args.nonce}\n` +
+      `ts=${args.issuedAtUnix}`,
+  );
+}
