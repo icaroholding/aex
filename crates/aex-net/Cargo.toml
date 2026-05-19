@@ -17,6 +17,8 @@ tokio = { workspace = true }
 tracing.workspace = true
 serde = { workspace = true }
 rand.workspace = true
+thiserror.workspace = true
+url = { workspace = true }
 
 [dev-dependencies]
 axum = { workspace = true }

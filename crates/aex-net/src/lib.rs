@@ -26,8 +26,13 @@ pub mod captive;
 pub mod dns;
 pub mod http;
 pub mod retry;
+pub mod safe_http;
 
 pub use captive::{detect_network_state, NetworkState};
 pub use dns::CloudflareDnsResolver;
 pub use http::{build_http_client, build_http_client_with_timeout};
 pub use retry::{retry_with_backoff, RetryPolicy};
+pub use safe_http::{
+    is_forbidden_ip, safe_get, SafeHttpError, SafeHttpResponse, SAFE_HTTP_MAX_BODY,
+    SAFE_HTTP_TIMEOUT,
+};
