@@ -156,3 +156,4 @@ and what follow-up work it implies.
 | [0046](0046-card-cache-1h-etag-events.md)        | Agent card cache — 1 h TTL + ETag + event-driven invalidation |
 | [0047](0047-v2-providers-spize-web-ethr-key.md)  | v2.0 GA ships four DID providers: `did:spize`, `did:web`, `did:ethr`, `did:key` |
 | [0048](0048-conformance-suite-apache-2.md)       | `aex-conformance` suite is Apache-2.0 open binary; badge URL pattern |
+| [0049](0049-deferred-decisions-neutral-standard.md) | Deferred decisions — neutral standard for non-immediate responses |

@@ -140,3 +140,50 @@ mode. Expected outcome matrix:
 | MS NCSI body ≠ "Microsoft NCSI" | Limited |
 | All probes timeout | Unknown |
 | HTTP 511 from any probe | CaptivePortal |
+
+---
+
+## v2.2 — Deferred decisions follow-up
+
+### Multi-party deferred decisions (N-of-M signed responses)
+
+**What.** Extend the deferred-decision pattern (ADR-0049) so that
+multiple deciders may need to concur before the final outcome is
+issued. The wire format would gain an aggregate response carrying
+N signatures, plus a capability bit advertising the recipient's
+threshold (e.g. `multi-party-decision-2-of-3`).
+
+**Why.** Real use cases:
+- Corporate spending above a threshold requires CFO + procurement
+  + legal approval.
+- Legal contract review by two specialist agents (clauses +
+  liability) plus one human counsel.
+- AI ensemble voting (three specialist models concur or the
+  transfer is held).
+Without standard support these flows are implemented bilaterally
+between sender and recipient — non-interoperable and
+non-verifiable in conformance.
+
+**Pros.** Natural generalisation of the v2.1 deferred-decision
+pattern. Reuses the same `decision_id` correlation, the same
+audit-receipt mechanics. Differentiator vs other agent stacks
+that lack multi-party primitives.
+
+**Cons.** State machine grows (partial decisions, dissent
+handling, dissenter weight). Wire format gets an aggregate
+container — first non-trivial extension to v2 canonical bytes.
+Conformance burden roughly doubles for this capability.
+
+**Depends on.** v2.1 deferred-decision in production with real
+operator feedback on edge cases. Do not design v2.2 in the
+abstract; collect concrete N-of-M scenarios from adopters first.
+
+**Where to start.** Re-read ADR-0049 §Consequences for the
+explicit acknowledgement that multi-party is out of v2.1 scope.
+Draft a follow-up ADR with: aggregate response shape, threshold
+advertisement, partial-decision audit semantics, sender-side
+behaviour when threshold is missed.
+
+**Effort estimate.** L (4-6 weeks once design is locked).
+**Priority.** P2.
+

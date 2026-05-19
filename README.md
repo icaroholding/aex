@@ -401,14 +401,18 @@ $ aex-conformance
   ✓ wire-v2-rejects-newline-in-fields
   ✓ wire-v2-rotate-key-same-keys-rejected
   ✓ wire-v2-receipt-action-whitelist
+# deferred-decision
+  ✓ decision-request-bytes-stable
+  ✓ decision-response-bytes-stable
+  ✓ deferred-decision-capability-bit-stable
 
-ALL PASSED — 22 tests
+ALL PASSED — 25 tests
 You can claim AEX v2 compliance.
 ```
 
 Exit code 0 on pass, 1 on any failure. A structured JSON report is available via `--report-json <path>` for integration with CI dashboards.
 
-The suite covers, at v2.0 GA: wire-v2 round-trip across the three reference SDK languages; JWS algorithm whitelist (`alg=none`, `HS256`, missing `alg`, malformed `alg`); SSRF resistance against the full CIDR block list; clock-skew window enforcement; DID URI parser strictness; capability bit stability; cross-version isolation between v1 and v2. The list grows with each capability ADR; the suite is forward-compatible.
+The suite covers, at v2.0 GA: wire-v2 round-trip across the three reference SDK languages; JWS algorithm whitelist (`alg=none`, `HS256`, missing `alg`, malformed `alg`); SSRF resistance against the full CIDR block list; clock-skew window enforcement; DID URI parser strictness; capability bit stability; cross-version isolation between v1 and v2; deferred-decision request/response canonical bytes and capability bit stability. The list grows with each capability ADR; the suite is forward-compatible.
 
 Continuous integration of both the open-source reference control plane and its commercial counterpart gates every release on a passing conformance run. Third-party implementations that ship a passing run are encouraged to publish their report and the corresponding hash; an ecosystem-wide directory of conformant deployments is on the v2.1 roadmap.
 

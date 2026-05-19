@@ -471,6 +471,117 @@ between implementations fails CI in all three languages simultaneously.
 
 ---
 
+## §8. Deferred decisions
+
+Per [ADR-0049](decisions/0049-deferred-decisions-neutral-standard.md):
+
+### §8.1 Capability advertisement
+
+A recipient that may answer inbound intents asynchronously MUST
+advertise the `deferred-decision` capability bit (bit 8) in its
+JWS-signed agent card and in its `GET /v2/capabilities` response.
+
+A sender observing this bit MUST handle an HTTP `202 Accepted`
+response to a `POST /v2/intents` and MUST wait for a signed
+`aex-decision-response:v2` message before considering the transfer
+settled.
+
+### §8.2 `aex-decision-request:v2`
+
+Signed by the **recipient** immediately after receiving an intent
+when the policy engine returns a deferred outcome.
+
+```
+aex-decision-request:v2
+recipient={recipient_agent_id}
+transfer={transfer_id}
+decision={decision_id}
+eta_secs={eta_seconds}
+nonce={nonce}
+ts={issued_at_unix}
+```
+
+| Field | Constraint |
+|---|---|
+| `recipient` | The recipient's AgentId. |
+| `transfer` | The same `transfer_id` issued for the intent. |
+| `decision` | Unique identifier within the recipient's namespace. The same string MUST appear in the corresponding response. |
+| `eta_secs` | Non-negative integer hint of expected wait in seconds. `0` means "as soon as practical". |
+| `nonce` | Lowercase hex, 32–128 chars. |
+| `ts` | Integer Unix seconds. |
+
+Reference function: `aex-core::wire_v2::decision_request_bytes_v2`.
+
+### §8.3 `aex-decision-response:v2`
+
+Signed by the **recipient** once the deferred verdict has been
+produced.
+
+```
+aex-decision-response:v2
+recipient={recipient_agent_id}
+transfer={transfer_id}
+decision={decision_id}
+outcome={accepted|rejected}
+reason={reason_or_empty}
+nonce={nonce}
+ts={issued_at_unix}
+```
+
+`outcome` MUST be exactly `accepted` or `rejected`. The whitelist is
+fixed; future values require a fresh ADR and a wire-version bump.
+
+`reason` is optional (empty allowed) and carries a human-readable
+explanation visible to the sender and the audit chain.
+
+Reference function: `aex-core::wire_v2::decision_response_bytes_v2`.
+
+### §8.4 Decider neutrality
+
+The protocol does not specify, recommend, or constrain **who or
+what** produces the final outcome. Conforming implementations MAY
+source the decision from:
+
+- a human operator via an interactive prompt,
+- a secondary AI evaluator (specialist model, second-opinion
+  agent),
+- a deterministic policy engine (Cedar, OPA, custom DSL),
+- a consensus of multiple agents (out of scope for v2.1; see
+  ADR-0049 §Consequences for the v2.2 trajectory),
+- any combination of the above.
+
+The wire bytes are identical regardless of the decider.
+
+### §8.5 Audit trail
+
+Conforming implementations MUST record both messages in their audit
+chain:
+
+- The `aex-decision-request:v2` event lands as
+  `DeferredDecisionRequested` in `aex-audit::EventKind`.
+- The `aex-decision-response:v2` event lands as
+  `SignedDecisionReceipt`. The receipt is non-repudiable: any later
+  dispute can verify the original signature against the recipient's
+  registered key.
+
+### §8.6 Idempotency and finality
+
+Once a `aex-decision-response:v2` has been emitted for a given
+`decision_id`, the decision is final. Re-issuing a response with
+the same `decision_id` MUST be rejected by both the sender's
+verifier and the recipient's audit chain as a uniqueness violation.
+
+Changing the outcome requires a new transfer.
+
+### §8.7 Conformance
+
+Conforming implementations MUST pass the three deferred-decision
+checks in the `aex-conformance` suite:
+
+- `decision-request-bytes-stable`
+- `decision-response-bytes-stable`
+- `deferred-decision-capability-bit-stable`
+
 ## Appendix A — Change log relative to v1
 
 | Item | v1 | v2 |
