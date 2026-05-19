@@ -26,6 +26,7 @@ import {
 } from "@aexproto/sdk";
 
 import { IdentityStore } from "./identityStore.js";
+import { expandWithAliases, normalizeToolName } from "./aliases.js";
 
 const BASE_URL = process.env.SPIZE_BASE_URL ?? "http://127.0.0.1:8080";
 const IDENTITY_FILE =
@@ -133,15 +134,15 @@ const SpizeFetchViaTunnelInput = SpizeTransferIdInput.extend({
   as: z.enum(["text", "base64"]).optional().default("text"),
 });
 
-const TOOL_DEFS = [
+const V2_TOOL_DEFS = [
   {
-    name: "spize_whoami",
+    name: "aex_whoami",
     description:
-      "Return the current Spize agent identity (agent_id, org, name). Returns null if no identity has been initialized yet.",
+      "Return the current AEX agent identity (agent_id, org, name). Returns null if no identity has been initialized yet.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
-    name: "spize_init",
+    name: "aex_init",
     description:
       "Create a new Spize identity, register it with the control plane, and persist the private key to the configured identity file. Requires org and name.",
     inputSchema: {
@@ -160,16 +161,16 @@ const TOOL_DEFS = [
     },
   },
   {
-    name: "spize_send",
+    name: "aex_send",
     description:
-      "Send a file to another Spize agent. Content is validated, scanned, policy-evaluated, and (on allow) stored for the recipient to pick up. Returns the transfer_id and state.",
+      "Send a file to another AEX agent. Content is validated, scanned, policy-evaluated, and (on allow) stored for the recipient to pick up. Returns the transfer_id and state.",
     inputSchema: {
       type: "object",
       properties: {
         recipient: {
           type: "string",
           description:
-            "Recipient agent_id (spize:org/name:fingerprint), DID, email, or phone.",
+            "Recipient agent_id (did:method:specific-id[#fragment]; legacy spize:org/name:fingerprint still accepted), DID, email, or phone.",
         },
         content: { type: "string" },
         encoding: {
@@ -186,13 +187,13 @@ const TOOL_DEFS = [
     },
   },
   {
-    name: "spize_inbox",
+    name: "aex_inbox",
     description:
       "List transfers waiting for this identity (state: ready_for_pickup or accepted). Capped at 100 most recent.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
-    name: "spize_download",
+    name: "aex_download",
     description:
       "Download a transfer's bytes. Returns content as text by default, or base64 for binary files.",
     inputSchema: {
@@ -210,7 +211,7 @@ const TOOL_DEFS = [
     },
   },
   {
-    name: "spize_ack",
+    name: "aex_ack",
     description:
       "Acknowledge delivery of a transfer. The server transitions the transfer to 'delivered' and emits an audit event. Returns the resulting chain_head.",
     inputSchema: {
@@ -221,7 +222,7 @@ const TOOL_DEFS = [
     },
   },
   {
-    name: "spize_send_via_tunnel",
+    name: "aex_send_via_tunnel",
     description:
       "M2 peer-to-peer send: announce a transfer without uploading bytes. The sender must already be running an aex-data-plane reachable at tunnel_url (see the aex-data-plane binary). The control plane stores the URL and will sign short-lived tickets against it for the recipient.",
     inputSchema: {
@@ -242,7 +243,7 @@ const TOOL_DEFS = [
     },
   },
   {
-    name: "spize_request_ticket",
+    name: "aex_request_ticket",
     description:
       "M2 recipient step: request a signed data-plane ticket for a transfer in `ready_for_pickup`. The returned ticket grants a one-time fetch of the blob directly from the sender's tunnel; it expires in ~60s.",
     inputSchema: {
@@ -253,7 +254,7 @@ const TOOL_DEFS = [
     },
   },
   {
-    name: "spize_fetch_from_tunnel",
+    name: "aex_fetch_from_tunnel",
     description:
       "M2 recipient step: request a ticket and fetch the blob from the sender's data plane in one call. Bytes flow peer-to-peer — the control plane never sees payload content. Returns content as text by default, or base64 for binary files.",
     inputSchema: {
@@ -267,6 +268,15 @@ const TOOL_DEFS = [
     },
   },
 ] as const;
+
+/**
+ * Tool list exposed by `tools/list`: every v2 tool plus its legacy
+ * `spize_*` alias for the duration of the v1→v2 grace window
+ * (ADR-0043). Hosts that already cached the legacy names keep working;
+ * hosts that consult `tools/list` see the v2 names as canonical and
+ * the legacy names tagged DEPRECATED in their description.
+ */
+const TOOL_DEFS = expandWithAliases(V2_TOOL_DEFS);
 
 // ---------- server ----------
 
@@ -282,7 +292,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 server.setRequestHandler(CallToolRequestSchema, async (req) => {
   const { name, arguments: args = {} } = req.params;
   try {
-    const result = await dispatch(name, args);
+    // Resolve legacy `spize_*` to its v2 `aex_*` form before dispatch.
+    // Emits a one-shot deprecation warning on stderr for the first
+    // call to any given legacy name; the warning never reaches stdout
+    // (which carries the MCP protocol).
+    const canonical = normalizeToolName(name);
+    const result = await dispatch(canonical, args);
     return {
       content: [
         {
@@ -312,7 +327,7 @@ async function dispatch(
   await loadIdentity();
 
   switch (name) {
-    case "spize_whoami": {
+    case "aex_whoami": {
       if (!cachedIdentity) return { identity: null, identity_file: IDENTITY_FILE };
       return {
         agent_id: cachedIdentity.agentId,
@@ -324,7 +339,7 @@ async function dispatch(
       };
     }
 
-    case "spize_init": {
+    case "aex_init": {
       const input = SpizeInitInput.parse(args);
       if (cachedIdentity && !input.overwrite) {
         throw new Error(
@@ -344,7 +359,7 @@ async function dispatch(
       };
     }
 
-    case "spize_send": {
+    case "aex_send": {
       const identity = needIdentity();
       const input = SpizeSendInput.parse(args);
       const data =
@@ -366,7 +381,7 @@ async function dispatch(
       };
     }
 
-    case "spize_inbox": {
+    case "aex_inbox": {
       const identity = needIdentity();
       const inbox = await clientFor(identity).inbox();
       return {
@@ -384,7 +399,7 @@ async function dispatch(
       };
     }
 
-    case "spize_download": {
+    case "aex_download": {
       const identity = needIdentity();
       const input = SpizeDownloadInput.parse(args);
       const bytes = await clientFor(identity).download(input.transfer_id);
@@ -418,14 +433,14 @@ async function dispatch(
       };
     }
 
-    case "spize_ack": {
+    case "aex_ack": {
       const identity = needIdentity();
       const { transfer_id } = SpizeTransferIdInput.parse(args);
       const result = await clientFor(identity).ack(transfer_id);
       return result;
     }
 
-    case "spize_send_via_tunnel": {
+    case "aex_send_via_tunnel": {
       const identity = needIdentity();
       const input = SpizeSendViaTunnelInput.parse(args);
       const tx = await clientFor(identity).sendViaTunnel({
@@ -444,7 +459,7 @@ async function dispatch(
       };
     }
 
-    case "spize_request_ticket": {
+    case "aex_request_ticket": {
       const identity = needIdentity();
       const { transfer_id } = SpizeTransferIdInput.parse(args);
       const ticket: DataPlaneTicket = await clientFor(identity).requestTicket(
@@ -459,7 +474,7 @@ async function dispatch(
       };
     }
 
-    case "spize_fetch_from_tunnel": {
+    case "aex_fetch_from_tunnel": {
       const identity = needIdentity();
       const input = SpizeFetchViaTunnelInput.parse(args);
       const client = clientFor(identity);
