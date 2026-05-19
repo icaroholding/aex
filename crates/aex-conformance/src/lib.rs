@@ -199,6 +199,21 @@ pub fn all_tests() -> Vec<ConformanceTest> {
             category: "wire",
             run: || Box::pin(test_wire_v2_receipt_action_whitelist()),
         },
+        ConformanceTest {
+            id: "decision-request-bytes-stable",
+            category: "deferred-decision",
+            run: || Box::pin(test_decision_request_bytes_stable()),
+        },
+        ConformanceTest {
+            id: "decision-response-bytes-stable",
+            category: "deferred-decision",
+            run: || Box::pin(test_decision_response_bytes_stable()),
+        },
+        ConformanceTest {
+            id: "deferred-decision-capability-bit-stable",
+            category: "deferred-decision",
+            run: || Box::pin(test_deferred_decision_capability_bit_stable()),
+        },
     ]
 }
 
@@ -537,6 +552,81 @@ async fn test_wire_v2_receipt_action_whitelist() -> Result<(), String> {
     Ok(())
 }
 
+async fn test_decision_request_bytes_stable() -> Result<(), String> {
+    let bytes = wire_v2::decision_request_bytes_v2(
+        "did:web:acme.com#agent-vendite",
+        "tx_abc123",
+        "dec_0001",
+        86_400,
+        NONCE,
+        1_700_000_000,
+    )
+    .map_err(|e| e.to_string())?;
+    let s = std::str::from_utf8(&bytes).map_err(|e| e.to_string())?;
+    if !s.starts_with("aex-decision-request:v2\n") {
+        return Err(format!("unexpected prefix: {:?}", &s[..40]));
+    }
+    if !s.contains("decision=dec_0001\n") {
+        return Err("decision id field missing".into());
+    }
+    if !s.contains("eta_secs=86400\n") {
+        return Err("eta_secs field missing or malformed".into());
+    }
+    Ok(())
+}
+
+async fn test_decision_response_bytes_stable() -> Result<(), String> {
+    let accepted = wire_v2::decision_response_bytes_v2(
+        "did:web:acme.com#agent-vendite",
+        "tx_abc123",
+        "dec_0001",
+        "accepted",
+        "",
+        NONCE,
+        1_700_000_000,
+    )
+    .map_err(|e| e.to_string())?;
+    if !std::str::from_utf8(&accepted)
+        .unwrap()
+        .starts_with("aex-decision-response:v2\n")
+    {
+        return Err("accepted prefix wrong".into());
+    }
+    // Outcome whitelist enforced
+    let bad =
+        wire_v2::decision_response_bytes_v2("x", "tx", "dec", "maybe", "", NONCE, 1_700_000_000);
+    if bad.is_ok() {
+        return Err("non-whitelisted outcome accepted".into());
+    }
+    Ok(())
+}
+
+async fn test_deferred_decision_capability_bit_stable() -> Result<(), String> {
+    if Capability::DeferredDecision.as_bit() != 8 {
+        return Err(format!(
+            "DeferredDecision bit changed: {}",
+            Capability::DeferredDecision.as_bit()
+        ));
+    }
+    if Capability::DeferredDecision.as_str() != "deferred-decision" {
+        return Err(format!(
+            "DeferredDecision name changed: {:?}",
+            Capability::DeferredDecision.as_str()
+        ));
+    }
+    // Forward-compat: a set containing the bit must still parse and
+    // serialize the bit back correctly.
+    let set = CapabilitySet::empty().with(Capability::DeferredDecision);
+    if !set.has(Capability::DeferredDecision) {
+        return Err("set membership broken".into());
+    }
+    let names = set.to_string_array();
+    if !names.contains(&"deferred-decision") {
+        return Err("string array missing deferred-decision".into());
+    }
+    Ok(())
+}
+
 /// Useful in tests: poke `Duration` so the unused-import warning
 /// doesn't fire on bookkeeping helpers we may add later.
 #[doc(hidden)]
@@ -559,7 +649,7 @@ mod tests {
                 .collect::<Vec<_>>()
         );
         // Sanity: we expect a stable test count.
-        assert_eq!(results.len(), 22);
+        assert_eq!(results.len(), 25);
     }
 
     #[tokio::test]
